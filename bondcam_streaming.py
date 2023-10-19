@@ -4,6 +4,7 @@ from os import path, listdir, remove
 from datetime import datetime
 import time
 from itertools import cycle
+import requests
 
 from dotenv import load_dotenv
 
@@ -21,7 +22,15 @@ VIDEO_KEEP_DAYS = int(os.environ["VIDEO_KEEP_DAYS"])
 CHECK_FILES_EVERY = int(os.environ["CHECK_FILES_EVERY"])#seconds - check and remove old files
 CAMERAS_CONFIG_FILENAME = os.environ["CAMERAS_CONFIG_FILENAME"]
 
-os.environ["GST_DEBUG"] = '2,interpipe*:3'
+data = {
+    "serial": "eacfab1dec54898c"
+}
+token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2NTJkM2JiOWY1OTQ0ODViYzI0YjY4MDMiLCJlbWFpbCI6ImhhbnNyYWpyYW5hQGdtYWlsLmNvbSIsImlhdCI6MTY5NzUzNDUwMH0.E0-EF84ibZF4H5zci_5qH4VqkNQVPoSW1tBBaFvxzyI'
+headers =  {"Content-Type":"raw/json", "Authorization": f"bearer {token}"}
+url = "https://bond.niftyitsolution.com/bond-cam-backend/api/device/configure"
+
+
+os.environ["GST_DEBUG"] = '2,flvmux:1'
 
 import sys
 import gi
@@ -49,11 +58,6 @@ def remove_old_files(folder, extension, days_delta):
 
 def remove_pipeline(pipeline, label):
     print(f'Pipeline "{label}" is removing')
-
-    src = pipeline.get_by_name(f'interpipesrc{label}')
-    if src:
-        src.set_property('listen-to', None)
-        time.sleep(0.1)
 
     pipeline.send_event(Gst.Event.new_eos())
     time.sleep(0.1)
@@ -95,12 +99,13 @@ class output_connector():
             time.sleep(5)
             print(f'End of calling async pipeline destruction for output_connector class "{self.label}"')
 
-        self.pipeline = Gst.parse_launch(
-            f'v4l2src do-timestamp=1 device=/dev/video1 ! image/jpeg,framerate=30/1,width=1920,height=1080 ! queue ! jpegdec ! queue ! videoconvert ! '
-            f'mpph264enc ! queue ! video/x-h264,level=(string)4 ! h264parse ! tee name=tee_{self.label} ! '
-            f'queue ! flvmux  streamable=1 ! rtmpsink sync=0 name=rtmpsink{self.label} location=\"{self.rtmp_path}\" '
-            f'tee_{self.label}. ! queue ! '
-            f'splitmuxsink name=splitmuxsink{self.label} async-handling=1 message-forward=1 max-size-time={self.video_duration * 60 * 1000000000} location={self.save_path}start_{self.label}.mp4')
+        gcommand = f"""v4l2src do-timestamp=1 device=/dev/video0 ! image/jpeg,framerate=30/1,width=1920,height=1080 ! queue ! mppjpegdec ! videoconvert !  
+            mpph264enc profile=main qos=1 header-mode=1 profile=main bps=2000000 bps-max=4000000 rc-mode=vbr ! video/x-h264,level=(string)4 ! h264parse config-interval=1 ! tee name=tee_{self.label} ! 
+            queue ! flvmux name=mux streamable=1 ! watchdog timeout=20000 ! rtmp2sink sync=0 name=rtmpsink{self.label} location=\"{self.rtmp_path}\"
+            tee_{self.label}. ! queue ! 
+            splitmuxsink name=splitmuxsink{self.label} async-handling=1 message-forward=1 max-size-time={self.video_duration * 60 * 1000000000} location={self.save_path}start_{self.label}.mp4"""
+        #print(gcommand)
+        self.pipeline = Gst.parse_launch(gcommand)
 
         self.bus = self.pipeline.get_bus()
         self.bus.add_signal_watch()
@@ -133,15 +138,10 @@ class output_connector():
         print(f'Connecting camera {source} to output "{self.label}"')
         #caps = source.get_caps()
         #print_caps(caps, source.get_label())
-        src = self.pipeline.get_by_name(f'interpipesrc{self.label}')
-        #src.set_property('caps', caps)
-        src.set_property('listen-to', source)
         self.active_camera=source
 
 
     def disconnect_from_source(self):
-        src = self.pipeline.get_by_name(f'interpipesrc{self.label}')
-        src.set_property('listen-to', None)
         self.active_camera = None
 
     def eos_callback(self, bus, msg):
@@ -219,8 +219,18 @@ def main(args):
 
     Gst.init(None)
 
-    output=output_connector('output1', VIDEO_FOLDER, STREAMING_ADDRESS)
-    output.run_pipeline()
+    req3 = requests.post(url, data=data, headers=headers)
+
+    req_data = req3.json()
+    endpoint1, key1, playbackUrl1 = req_data['data']['channels'][0]['ingestEndpoint'], req_data['data']['channels'][0]['streamKey'], req_data['data']['channels'][0]['playbackUrl']
+    # endpoint2, key2, playbackUrl2 = req_data['data']['channels'][1]['ingestEndpoint'], req_data['data']['channels'][1]['streamKey'], req_data['data']['channels'][1]['playbackUrl']
+    streaming_address1 = endpoint1 + key1
+    streaming_address1 = 'rtmps://3d226343218c.global-contribute.live-video.net:443/app/sk_ap-south-1_YROv9RFnY8KA_YI6qF0Go0sLwqlQlPz4OnpZa1L2abf'
+    playbackUrl1 = 'https://3d226343218c.ap-south-1.playback.live-video.net/api/video/v1/ap-south-1.301233104418.channel.WqfQpbma5FQY.m3u8'
+    print(f'Streaming to endpoint: {streaming_address1}')
+    print(f'Playback URL: {playbackUrl1}')
+    output1=output_connector('output1', VIDEO_FOLDER, streaming_address1)
+    output1.run_pipeline()
 
 if __name__ == '__main__':
     sys.exit(main(sys.argv))
