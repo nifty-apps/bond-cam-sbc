@@ -26,7 +26,7 @@ CHECK_FILES_EVERY = int(os.environ["CHECK_FILES_EVERY"])#seconds - check and rem
 DO_LOCAL_OUTPUT = int(os.environ["DO_LOCAL_OUTPUT"])
 LOCAL_ENDPOINT1 = os.environ["LOCAL_ENDPOINT1"]
 LOCAL_ENDPOINT2 = os.environ["LOCAL_ENDPOINT2"]
-
+AUTO_DETECT_USB_PORTS = int(os.environ["AUTO_DETECT_USB_PORTS"])
 
 os.environ["GST_DEBUG"] = '2,flvmux:1'
 
@@ -85,7 +85,7 @@ def remove_pipeline(pipeline, label):
     print(f'Removed pipeline "{label}"')
 
 class output_connector():
-    def __init__(self, label, save_path, rtmp_path1, rtmp_path2):
+    def __init__(self, label, save_path, rtmp_path1, rtmp_path2, device1, device2):
         print(f'Init output_connector "{label}" class')
         self.pipeline=None
         self.label=label
@@ -97,6 +97,8 @@ class output_connector():
         self.video_duration=VIDEO_DURATION
         self.status='NULL'
         self.active_camera=None
+        self.device1 = device1
+        self.device2 = device2
 
         self.pipeline=None
         self.launch_pipeline()
@@ -111,10 +113,10 @@ class output_connector():
         rtmp_output_element = 'rtmpsink' if DO_LOCAL_OUTPUT else 'rtmp2sink'
 
         print(f'==================Creating a new pipeline=====================\n')
-        gcommand = f"""v4l2src do-timestamp=1 device={VIDEO_DEVICE1} ! image/jpeg,framerate={VIDEO_FRAMERATE1}/1,width=1920,height=1080 ! queue ! mppjpegdec ! videoconvert !  
+        gcommand = f"""v4l2src do-timestamp=1 device={self.device1} ! image/jpeg,framerate={VIDEO_FRAMERATE1}/1,width=1920,height=1080 ! queue ! mppjpegdec ! videoconvert !  
             mpph264enc profile=main qos=1 header-mode=1 profile=main bps={BITRATE} bps-max={BITRATE+1000000} rc-mode=vbr ! video/x-h264,level=(string)4 ! h264parse config-interval=1 ! tee name=tee1_{self.label} ! 
             queue ! flvmux name=mux streamable=1 ! watchdog timeout={self.watchdog_timeout} ! {rtmp_output_element} sync=0 name=rtmpsink1{self.label} location=\"{self.rtmp_path1}\"
-            v4l2src do-timestamp=1 device={VIDEO_DEVICE2} ! image/jpeg,framerate={VIDEO_FRAMERATE2}/1,width=1920,height=1080 ! queue ! mppjpegdec ! videoconvert !  
+            v4l2src do-timestamp=1 device={self.device2} ! image/jpeg,framerate={VIDEO_FRAMERATE2}/1,width=1920,height=1080 ! queue ! mppjpegdec ! videoconvert !  
             mpph264enc profile=main qos=1 header-mode=1 profile=main bps={BITRATE} bps-max={BITRATE+1000000} rc-mode=vbr ! video/x-h264,level=(string)4 ! h264parse config-interval=1 ! tee name=tee2_{self.label} ! 
             queue ! flvmux name=mux2 streamable=1 ! watchdog timeout={self.watchdog_timeout} ! {rtmp_output_element} sync=0 name=rtmpsink2{self.label} location=\"{self.rtmp_path2}\"
             alsasrc device={AUDIO_DEVICE} ! audioresample ! audio/x-raw,rate=48000 ! voaacenc bitrate=96000 ! audio/mpeg ! aacparse ! audio/mpeg, mpegversion=4 ! tee name=audiotee ! queue ! mux.
@@ -253,8 +255,28 @@ def main(args):
     cmd_cpuinfo = """cat /proc/cpuinfo | grep Serial"""
     cpuinfo = subprocess.run(["bash", "-c", cmd_cpuinfo], stdout=subprocess.PIPE)
     serial = cpuinfo.stdout.decode('utf-8').split(' ')[-1]
-
     print(f'Cpu serial is {serial}')
+
+    cmd_devices = """v4l2-ctl --list-devices"""
+    devicesstr = subprocess.run(["bash", "-c", cmd_devices], stdout=subprocess.PIPE)
+    devices = devicesstr.stdout.decode('utf-8')
+    d_counter = 0
+    l_devices = []
+    for d in devices.split('\n\n'):
+        if len(d) > 0:
+            d_counter += 1
+            d_name = d.split('\n\t')[0]
+            d_address = d.split('\n\t')[1]
+            l_devices.append(d_address)
+            print(f'Found device #{d_counter}: address {d_address} name {d_name}')
+    if d_counter > 2:
+        print(f'More than 2 cameras found, we would use first 2')
+    elif d_counter == 2:
+        print(f'All 2 cameras found automatically')
+    elif d_counter == 0:
+        print('Unable to find cameras')
+    elif d_counter == 1:
+        print('Only 1 camera found')
 
     data = {
         "serial": serial
@@ -266,7 +288,7 @@ def main(args):
     if not DO_LOCAL_OUTPUT:
         try:
             req3 = requests.post(url, data=data, headers=headers)
-            #req3 = requests.post(url, data=data)
+            # req3 = requests.post(url, data=data)
 
             print(f'Received: {req3}')
             req_data = req3.json()
@@ -277,8 +299,6 @@ def main(args):
             streaming_address2 = endpoint2 + key2
             print(f'Streaming to endpoints: {streaming_address1}, {streaming_address2}')
             print(f'Playback URL: {playbackUrl1}, {playbackUrl2}')
-            # streaming_address1 = 'rtmps://3d226343218c.global-contribute.live-video.net:443/app/sk_ap-south-1_YROv9RFnY8KA_YI6qF0Go0sLwqlQlPz4OnpZa1L2abf'
-            # playbackUrl1 = 'https://3d226343218c.ap-south-1.playback.live-video.net/api/video/v1/ap-south-1.301233104418.channel.WqfQpbma5FQY.m3u8'
         except:
             print(f'Error occured during API call')
             return 1
@@ -287,7 +307,11 @@ def main(args):
         streaming_address2 = LOCAL_ENDPOINT2
         print(f'Streaming to endpoints: {streaming_address1}, {streaming_address2}')
 
-    output=output_connector('output', VIDEO_FOLDER, streaming_address1, streaming_address2)
+    if AUTO_DETECT_USB_PORTS and (d_counter >= 2):
+        output=output_connector('output', VIDEO_FOLDER, streaming_address1, streaming_address2, l_devices[0], l_devices[1])
+    else:
+        output=output_connector('output', VIDEO_FOLDER, streaming_address1, streaming_address2, VIDEO_DEVICE1, VIDEO_DEVICE2)
+
     output.run_pipeline()
 
 if __name__ == '__main__':
