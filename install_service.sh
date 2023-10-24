@@ -1,9 +1,11 @@
 sudo apt update
 sudo apt install -y python3-pip git
 pip3 install python-dotenv
-mkdir -p /home/nifty/Projects/bondcam_streaming/videos/
+mkdir /home/nifty/Projects
 cd /home/nifty/Projects
 git clone git@github.com:nifty-apps/bond-cam-sbc.git /home/nifty/Projects/bondcam_streaming
+mkdir -p /home/nifty/Projects/bondcam_streaming/videos/
+chown -R nifty /home/nifty/Projects/bondcam_streaming
 cd /home/nifty/Projects/bondcam_streaming
 sudo cp bondcam_streaming.service /etc/systemd/system/
 sudo systemctl enable bondcam_streaming
