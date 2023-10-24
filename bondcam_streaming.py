@@ -100,6 +100,11 @@ class output_connector():
         self.device1 = device1
         self.device2 = device2
 
+        if self.device1 and self.device2:
+            self.num_devices = 2
+        elif self.device1 and self.device2 is None:
+            self.num_devices = 1
+
         self.pipeline=None
         self.launch_pipeline()
 
@@ -113,18 +118,27 @@ class output_connector():
         rtmp_output_element = 'rtmpsink' if DO_LOCAL_OUTPUT else 'rtmp2sink'
 
         print(f'==================Creating a new pipeline=====================\n')
-        gcommand = f"""v4l2src do-timestamp=1 device={self.device1} ! image/jpeg,framerate={VIDEO_FRAMERATE1}/1,width=1920,height=1080 ! queue ! mppjpegdec ! videoconvert !  
-            mpph264enc profile=main qos=1 header-mode=1 profile=main bps={BITRATE} bps-max={BITRATE+1000000} rc-mode=vbr ! video/x-h264,level=(string)4 ! h264parse config-interval=1 ! tee name=tee1_{self.label} ! 
-            queue ! flvmux name=mux streamable=1 ! watchdog timeout={self.watchdog_timeout} ! {rtmp_output_element} sync=0 name=rtmpsink1{self.label} location=\"{self.rtmp_path1}\"
-            v4l2src do-timestamp=1 device={self.device2} ! image/jpeg,framerate={VIDEO_FRAMERATE2}/1,width=1920,height=1080 ! queue ! mppjpegdec ! videoconvert !  
-            mpph264enc profile=main qos=1 header-mode=1 profile=main bps={BITRATE} bps-max={BITRATE+1000000} rc-mode=vbr ! video/x-h264,level=(string)4 ! h264parse config-interval=1 ! tee name=tee2_{self.label} ! 
-            queue ! flvmux name=mux2 streamable=1 ! watchdog timeout={self.watchdog_timeout} ! {rtmp_output_element} sync=0 name=rtmpsink2{self.label} location=\"{self.rtmp_path2}\"
-            alsasrc device={AUDIO_DEVICE} ! audioresample ! audio/x-raw,rate=48000 ! voaacenc bitrate=96000 ! audio/mpeg ! aacparse ! audio/mpeg, mpegversion=4 ! tee name=audiotee ! queue ! mux.
-            audiotee. !  queue ! mux2. 
-            tee1_{self.label}. ! queue !  
-            splitmuxsink name=splitmuxsink1{self.label} async-handling=1 message-forward=1 max-size-time={self.video_duration * 60 * 1000000000} location={self.save_path}start1_{self.label}.mp4
-            tee2_{self.label}. ! queue !  
-            splitmuxsink name=splitmuxsink2{self.label} async-handling=1 message-forward=1 max-size-time={self.video_duration * 60 * 1000000000} location={self.save_path}start2_{self.label}.mp4"""
+        if self.num_devices == 2:
+            gcommand = f"""v4l2src do-timestamp=1 device={self.device1} ! image/jpeg,framerate={VIDEO_FRAMERATE1}/1,width=1920,height=1080 ! queue ! mppjpegdec ! videoconvert !  
+                mpph264enc profile=main qos=1 header-mode=1 profile=main bps={BITRATE} bps-max={BITRATE+1000000} rc-mode=vbr ! video/x-h264,level=(string)4 ! h264parse config-interval=1 ! tee name=tee1_{self.label} ! 
+                queue ! flvmux name=mux streamable=1 ! watchdog timeout={self.watchdog_timeout} ! {rtmp_output_element} sync=0 name=rtmpsink1{self.label} location=\"{self.rtmp_path1}\"
+                v4l2src do-timestamp=1 device={self.device2} ! image/jpeg,framerate={VIDEO_FRAMERATE2}/1,width=1920,height=1080 ! queue ! mppjpegdec ! videoconvert !  
+                mpph264enc profile=main qos=1 header-mode=1 profile=main bps={BITRATE} bps-max={BITRATE+1000000} rc-mode=vbr ! video/x-h264,level=(string)4 ! h264parse config-interval=1 ! tee name=tee2_{self.label} ! 
+                queue ! flvmux name=mux2 streamable=1 ! watchdog timeout={self.watchdog_timeout} ! {rtmp_output_element} sync=0 name=rtmpsink2{self.label} location=\"{self.rtmp_path2}\"
+                alsasrc device={AUDIO_DEVICE} ! audioresample ! audio/x-raw,rate=48000 ! voaacenc bitrate=96000 ! audio/mpeg ! aacparse ! audio/mpeg, mpegversion=4 ! tee name=audiotee ! queue ! mux.
+                audiotee. !  queue ! mux2. 
+                tee1_{self.label}. ! queue !  
+                splitmuxsink name=splitmuxsink1{self.label} async-handling=1 message-forward=1 max-size-time={self.video_duration * 60 * 1000000000} location={self.save_path}start1_{self.label}.mp4
+                tee2_{self.label}. ! queue !  
+                splitmuxsink name=splitmuxsink2{self.label} async-handling=1 message-forward=1 max-size-time={self.video_duration * 60 * 1000000000} location={self.save_path}start2_{self.label}.mp4"""
+        elif self.num_devices == 1:
+            gcommand = f"""v4l2src do-timestamp=1 device={self.device1} ! image/jpeg,framerate={VIDEO_FRAMERATE1}/1,width=1920,height=1080 ! queue ! mppjpegdec ! videoconvert !  
+                mpph264enc profile=main qos=1 header-mode=1 profile=main bps={BITRATE} bps-max={BITRATE+1000000} rc-mode=vbr ! video/x-h264,level=(string)4 ! h264parse config-interval=1 ! tee name=tee1_{self.label} ! 
+                queue ! flvmux name=mux streamable=1 ! watchdog timeout={self.watchdog_timeout} ! {rtmp_output_element} sync=0 name=rtmpsink1{self.label} location=\"{self.rtmp_path1}\"
+                alsasrc device={AUDIO_DEVICE} ! audioresample ! audio/x-raw,rate=48000 ! voaacenc bitrate=96000 ! audio/mpeg ! aacparse ! audio/mpeg, mpegversion=4 ! tee name=audiotee ! queue ! mux.
+                tee1_{self.label}. ! queue !  
+                splitmuxsink name=splitmuxsink1{self.label} async-handling=1 message-forward=1 max-size-time={self.video_duration * 60 * 1000000000} location={self.save_path}start1_{self.label}.mp4"""
+
         print(f'Gstreamer pipeline: {gcommand}\n')
         self.pipeline = Gst.parse_launch(gcommand)
 
@@ -143,9 +157,9 @@ class output_connector():
 
         sink = self.pipeline.get_by_name(f'splitmuxsink1{self.label}')
         sink.connect('format-location', self.format_location_callback1)
-        sink = self.pipeline.get_by_name(f'splitmuxsink2{self.label}')
-        sink.connect('format-location', self.format_location_callback2)
-
+        if self.num_devices == 2:
+            sink = self.pipeline.get_by_name(f'splitmuxsink2{self.label}')
+            sink.connect('format-location', self.format_location_callback2)
 
         self.pipeline.set_state(Gst.State.PLAYING)
         if self.active_camera:
@@ -309,6 +323,8 @@ def main(args):
 
     if AUTO_DETECT_USB_PORTS and (d_counter >= 2):
         output=output_connector('output', VIDEO_FOLDER, streaming_address1, streaming_address2, l_devices[0], l_devices[1])
+    elif AUTO_DETECT_USB_PORTS and (d_counter >= 1):
+        output = output_connector('output', VIDEO_FOLDER, streaming_address1, streaming_address2, l_devices[0], None)
     else:
         output=output_connector('output', VIDEO_FOLDER, streaming_address1, streaming_address2, VIDEO_DEVICE1, VIDEO_DEVICE2)
 
