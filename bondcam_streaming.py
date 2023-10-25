@@ -295,14 +295,11 @@ def main(args):
     data = {
         "serial": serial
     }
-    token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2NTJkM2JiOWY1OTQ0ODViYzI0YjY4MDMiLCJlbWFpbCI6ImhhbnNyYWpyYW5hQGdtYWlsLmNvbSIsImlhdCI6MTY5NzUzNDUwMH0.E0-EF84ibZF4H5zci_5qH4VqkNQVPoSW1tBBaFvxzyI'
-    headers =  {"Content-Type":"raw/json", "Authorization": f"bearer {token}"}
     url = INTEGRATION_ENDPOINT
 
     if not DO_LOCAL_OUTPUT:
         try:
-            req3 = requests.post(url, data=data, headers=headers)
-            # req3 = requests.post(url, data=data)
+            req3 = requests.post(url, data=data)
 
             print(f'Received: {req3}')
             req_data = req3.json()
