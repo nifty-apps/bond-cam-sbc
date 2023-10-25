@@ -6,7 +6,7 @@ import time
 from itertools import cycle
 import requests
 import subprocess
-
+import re
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -268,7 +268,9 @@ def main(args):
 
     cmd_cpuinfo = """cat /proc/cpuinfo | grep Serial"""
     cpuinfo = subprocess.run(["bash", "-c", cmd_cpuinfo], stdout=subprocess.PIPE)
-    serial = cpuinfo.stdout.decode('utf-8').split(' ')[-1]
+    serial_raw = cpuinfo.stdout.decode('utf-8').split(' ')[-1]
+    serial = re.sub(r"[\n\t\s]*", "", serial_raw)
+
     print(f'Cpu serial is {serial}')
 
     cmd_devices = """v4l2-ctl --list-devices"""
