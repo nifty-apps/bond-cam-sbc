@@ -1,0 +1,407 @@
+0:00:00.930162654 [34m 2985[00m 0xaaaab2b1e2c0 [33;01mWARN   [00m [00m                alsa pcm_hw.c:1716:snd_pcm_hw_open:[00m alsalib error: open '/dev/snd/pcmC2D0c' failed (-2): No such file or directory
+0:00:00.930293678 [34m 2985[00m 0xaaaab2b1e2c0 [33;01mWARN   [00m [00m                alsa gstalsasrc.c:790:gst_alsasrc_open:<alsasrc0>[00m error: Could not open audio device for recording.
+0:00:00.930305059 [34m 2985[00m 0xaaaab2b1e2c0 [33;01mWARN   [00m [00m                alsa gstalsasrc.c:790:gst_alsasrc_open:<alsasrc0>[00m error: Recording open error on device 'hw:2,0': No such file or directory
+0:00:00.940648062 [34m 2985[00m 0xaaaab2b1e2c0 [33;01mWARN   [00m [00m                alsa pcm_hw.c:1716:snd_pcm_hw_open:[00m alsalib error: open '/dev/snd/pcmC2D0c' failed (-2): No such file or directory
+0:00:00.940721015 [34m 2985[00m 0xaaaab2b1e2c0 [33;01mWARN   [00m [00m                alsa gstalsasrc.c:790:gst_alsasrc_open:<alsasrc0>[00m error: Could not open audio device for recording.
+0:00:00.940729478 [34m 2985[00m 0xaaaab2b1e2c0 [33;01mWARN   [00m [00m                alsa gstalsasrc.c:790:gst_alsasrc_open:<alsasrc0>[00m error: Recording open error on device 'hw:2,0': No such file or directory
+0:00:01.048607610 [34m 2985[00m 0xaaaab2b6a520 [33;01mWARN   [00m [00m                alsa pcm_hw.c:1716:snd_pcm_hw_open:[00m alsalib error: open '/dev/snd/pcmC2D0c' failed (-2): No such file or directory
+0:00:01.048793786 [34m 2985[00m 0xaaaab2b6a520 [33;01mWARN   [00m [00m                alsa gstalsasrc.c:790:gst_alsasrc_open:<alsasrc0>[00m error: Could not open audio device for recording.
+0:00:01.048837558 [34m 2985[00m 0xaaaab2b6a520 [33;01mWARN   [00m [00m                alsa gstalsasrc.c:790:gst_alsasrc_open:<alsasrc0>[00m error: Recording open error on device 'hw:2,0': No such file or directory
+0:00:05.956274848 [34m 2985[00m 0xaaaab2b1e2c0 [33;01mWARN   [00m [00m                alsa pcm_hw.c:1716:snd_pcm_hw_open:[00m alsalib error: open '/dev/snd/pcmC2D0c' failed (-2): No such file or directory
+0:00:05.956332043 [34m 2985[00m 0xaaaab2b1e2c0 [33;01mWARN   [00m [00m                alsa gstalsasrc.c:790:gst_alsasrc_open:<alsasrc1>[00m error: Could not open audio device for recording.
+0:00:05.956340798 [34m 2985[00m 0xaaaab2b1e2c0 [33;01mWARN   [00m [00m                alsa gstalsasrc.c:790:gst_alsasrc_open:<alsasrc1>[00m error: Recording open error on device 'hw:2,0': No such file or directory
+Cpu serial is 9eeece5e92124556
+Found device #1: address /dev/video0 name rk_hdmirx (fdee0000.hdmirx-controller):
+Found device #2: address /dev/video1 name KS12A884: KS12A884 (usb-fc880000.usb-1):
+Found device #3: address /dev/video3 name KS12A884: KS12A884 (usb-xhci-hcd.13.auto-1):
+More than 2 cameras found, we would use first 2
+Received: <Response [201]>
+Json received: {'data': {'device': {'_id': '653920d0a3e697a753926cd9', 'serial': '9eeece5e92124556', 'status': 'active', 'userId': '653610a0d54ca795915f1111', 'is_disable': False, 'is_deleted': False, 'createdAt': '2023-10-25T14:06:08.185Z', 'updatedAt': '2023-10-25T14:08:46.958Z', '__v': 0, 'camera': {'camera1': '6539216e85396654b9a80f7d', 'camera2': '6539216e85396654b9a80f7e'}, 'created_by': '653610a0d54ca795915f1111', 'deviceName': 'Orange PI'}, 'channels': [{'_id': '6539229447322b8cc23eb1e0', 'channelName': '075be4ef-62dd-4b9b-9064-0ea961ba958f', 'channelArn': 'arn:aws:ivs:ap-south-1:709814023867:channel/a5ABr46u5EGq', 'secretArn': 'arn:aws:ivs:ap-south-1:709814023867:stream-key/qyijT3UVzWC0', 'authorized': False, 'ingestEndpoint': 'rtmps://f70dbe090edc.global-contribute.live-video.net:443/app/', 'insecureIngest': False, 'latencyMode': 'LOW', 'playbackUrl': 'https://f70dbe090edc.ap-south-1.playback.live-video.net/api/video/v1/ap-south-1.709814023867.channel.a5ABr46u5EGq.m3u8', 'preset': '', 'recordingConfigurationArn': 'arn:aws:ivs:ap-south-1:709814023867:recording-configuration/zolEERWOuKET', 'tags': [{}], 'type': 'STANDARD', 'streamKey': 'sk_ap-south-1_qyijT3UVzWC0_lheVKBu032H5BLzbcNs5c1AWAjW6zs', 'userId': '653610a0d54ca795915f1111', 'status': 'active', 'is_disable': False, 'is_deleted': False, 'createdAt': '2023-10-25T14:13:40.121Z', 'updatedAt': '2023-10-25T14:13:40.280Z', '__v': 0, 'created_by': '653610a0d54ca795915f1111'}, {'_id': '653922ae47322b8cc23eb1e8', 'channelName': '02cb827b-8821-4c4f-9cf6-104645c774d1', 'channelArn': 'arn:aws:ivs:ap-south-1:709814023867:channel/DvecOaWddTfU', 'secretArn': 'arn:aws:ivs:ap-south-1:709814023867:stream-key/vwjBYKmgPJCD', 'authorized': False, 'ingestEndpoint': 'rtmps://f70dbe090edc.global-contribute.live-video.net:443/app/', 'insecureIngest': False, 'latencyMode': 'LOW', 'playbackUrl': 'https://f70dbe090edc.ap-south-1.playback.live-video.net/api/video/v1/ap-south-1.709814023867.channel.DvecOaWddTfU.m3u8', 'preset': '', 'recordingConfigurationArn': 'arn:aws:ivs:ap-south-1:709814023867:recording-configuration/zolEERWOuKET', 'tags': [{}], 'type': 'STANDARD', 'streamKey': 'sk_ap-south-1_vwjBYKmgPJCD_CHQK21enDfhMBUpyxivD4uF83QMKjS', 'userId': '653610a0d54ca795915f1111', 'status': 'active', 'is_disable': False, 'is_deleted': False, 'createdAt': '2023-10-25T14:14:06.245Z', 'updatedAt': '2023-10-25T14:14:06.336Z', '__v': 0, 'created_by': '653610a0d54ca795915f1111'}]}, 'message': '', 'error': 'Serial number already exists.', 'success': False}
+Streaming to endpoints: rtmps://f70dbe090edc.global-contribute.live-video.net:443/app/sk_ap-south-1_qyijT3UVzWC0_lheVKBu032H5BLzbcNs5c1AWAjW6zs, rtmps://f70dbe090edc.global-contribute.live-video.net:443/app/sk_ap-south-1_vwjBYKmgPJCD_CHQK21enDfhMBUpyxivD4uF83QMKjS
+Playback URL: https://f70dbe090edc.ap-south-1.playback.live-video.net/api/video/v1/ap-south-1.709814023867.channel.a5ABr46u5EGq.m3u8, https://f70dbe090edc.ap-south-1.playback.live-video.net/api/video/v1/ap-south-1.709814023867.channel.DvecOaWddTfU.m3u8
+Init output_connector "output" class
+==================Creating a new pipeline=====================
+
+Gstreamer pipeline: v4l2src do-timestamp=1 device=/dev/video0 ! image/jpeg,framerate=30/1,width=1920,height=1080 ! queue ! mppjpegdec ! videoconvert !  
+                mpph264enc profile=main qos=1 header-mode=1 profile=main bps=6000000 bps-max=7000000 rc-mode=vbr ! video/x-h264,level=(string)4 ! h264parse config-interval=1 ! tee name=tee1_output ! 
+                queue ! flvmux name=mux streamable=1 ! watchdog timeout=30000 ! rtmp2sink sync=0 name=rtmpsink1output location="rtmps://f70dbe090edc.global-contribute.live-video.net:443/app/sk_ap-south-1_qyijT3UVzWC0_lheVKBu032H5BLzbcNs5c1AWAjW6zs"
+                v4l2src do-timestamp=1 device=/dev/video1 ! image/jpeg,framerate=30/1,width=1920,height=1080 ! queue ! mppjpegdec ! videoconvert !  
+                mpph264enc profile=main qos=1 header-mode=1 profile=main bps=6000000 bps-max=7000000 rc-mode=vbr ! video/x-h264,level=(string)4 ! h264parse config-interval=1 ! tee name=tee2_output ! 
+                queue ! flvmux name=mux2 streamable=1 ! watchdog timeout=30000 ! rtmp2sink sync=0 name=rtmpsink2output location="rtmps://f70dbe090edc.global-contribute.live-video.net:443/app/sk_ap-south-1_vwjBYKmgPJCD_CHQK21enDfhMBUpyxivD4uF83QMKjS"
+                alsasrc device=hw:2,0 ! audioresample ! audio/x-raw,rate=48000 ! voaacenc bitrate=96000 ! audio/mpeg ! aacparse ! audio/mpeg, mpegversion=4 ! tee name=audiotee ! queue ! mux.
+                audiotee. !  queue ! mux2. 
+                tee1_output. ! queue !  
+                splitmuxsink name=splitmuxsink1output async-handling=1 message-forward=1 max-size-time=300000000000 location=/home/nifty/Projects/bondcam_streaming/videos/start1_output.mp4
+                tee2_output. ! queue !  
+                splitmuxsink name=splitmuxsink2output async-handling=1 message-forward=1 max-size-time=300000000000 location=/home/nifty/Projects/bondcam_streaming/videos/start2_output.mp4
+
+Error in RTMP pipeline "<Gst.Pipeline object at 0xffff8de47680 (GstPipeline at 0xaaaab2a5e160)>":(gerror=GLib.Error('Could not open audio device for recording.', 'gst-resource-error-quark', 5), debug="../ext/alsa/gstalsasrc.c(790): gst_alsasrc_open (): /GstPipeline:pipeline0/GstAlsaSrc:alsasrc0:\nRecording open error on device 'hw:2,0': No such file or directory")
+NeedReload=True
+Calling async pipeline destruction for output_connector class "output"
+Pipeline "output" is removing
+Removed pipeline "output"
+End of calling async pipeline destruction for output_connector class "output"
+==================Creating a new pipeline=====================
+
+Gstreamer pipeline: v4l2src do-timestamp=1 device=/dev/video0 ! image/jpeg,framerate=30/1,width=1920,height=1080 ! queue ! mppjpegdec ! videoconvert !  
+                mpph264enc profile=main qos=1 header-mode=1 profile=main bps=6000000 bps-max=7000000 rc-mode=vbr ! video/x-h264,level=(string)4 ! h264parse config-interval=1 ! tee name=tee1_output ! 
+                queue ! flvmux name=mux streamable=1 ! watchdog timeout=30000 ! rtmp2sink sync=0 name=rtmpsink1output location="rtmps://f70dbe090edc.global-contribute.live-video.net:443/app/sk_ap-south-1_qyijT3UVzWC0_lheVKBu032H5BLzbcNs5c1AWAjW6zs"
+                v4l2src do-timestamp=1 device=/dev/video1 ! image/jpeg,framerate=30/1,width=1920,height=1080 ! queue ! mppjpegdec ! videoconvert !  
+                mpph264enc profile=main qos=1 header-mode=1 profile=main bps=6000000 bps-max=7000000 rc-mode=vbr ! video/x-h264,level=(string)4 ! h264parse config-interval=1 ! tee name=tee2_output ! 
+                queue ! flvmux name=mux2 streamable=1 ! watchdog timeout=30000 ! rtmp2sink sync=0 name=rtmpsink2output location="rtmps://f70dbe090edc.global-contribute.live-video.net:443/app/sk_ap-south-1_vwjBYKmgPJCD_CHQK21enDfhMBUpyxivD4uF83QMKjS"
+                alsasrc device=hw:2,0 ! audioresample ! audio/x-raw,rate=48000 ! voaacenc bitrate=96000 ! audio/mpeg ! aacparse ! audio/mpeg, mpegversion=4 ! tee name=audiotee ! queue ! mux.
+                audiotee. !  queue ! mux2. 
+                tee1_output. ! queue !  
+                splitmuxsink name=splitmuxsink1output async-handling=1 message-forward=1 max-size-time=300000000000 location=/home/nifty/Projects/bondcam_streaming/videos/start1_output.mp4
+                tee2_output. ! queue !  
+                splitmuxsink name=splitmuxsink2output async-handling=1 message-forward=1 max-size-time=300000000000 location=/home/nifty/Projects/bondcam_streaming/videos/start2_output.mp4
+
+0:00:06.059869172 [34m 2985[00m 0xffff78008180 [33;01mWARN   [00m [00m                alsa pcm_hw.c:1716:snd_pcm_hw_open:[00m alsalib error: open '/dev/snd/pcmC2D0c' failed (-2): No such file or directory
+0:00:06.059973932 [34m 2985[00m 0xffff78008180 [33;01mWARN   [00m [00m                alsa gstalsasrc.c:790:gst_alsasrc_open:<alsasrc1>[00m error: Could not open audio device for recording.
+0:00:06.060001654 [34m 2985[00m 0xffff78008180 [33;01mWARN   [00m [00m                alsa gstalsasrc.c:790:gst_alsasrc_open:<alsasrc1>[00m error: Recording open error on device 'hw:2,0': No such file or directory
+0:00:10.981940562 [34m 2985[00m 0xaaaab2b1e2c0 [33;01mWARN   [00m [00m                alsa pcm_hw.c:1716:snd_pcm_hw_open:[00m alsalib error: open '/dev/snd/pcmC2D0c' failed (-2): No such file or directory
+0:00:10.986567541 [34m 2985[00m 0xaaaab2b1e2c0 [33;01mWARN   [00m [00m                alsa gstalsasrc.c:790:gst_alsasrc_open:<alsasrc2>[00m error: Could not open audio device for recording.
+0:00:10.986594096 [34m 2985[00m 0xaaaab2b1e2c0 [33;01mWARN   [00m [00m                alsa gstalsasrc.c:790:gst_alsasrc_open:<alsasrc2>[00m error: Recording open error on device 'hw:2,0': No such file or directory
+0:00:11.090631683 [34m 2985[00m 0xffff84015300 [33;01mWARN   [00m [00m                alsa pcm_hw.c:1716:snd_pcm_hw_open:[00m alsalib error: open '/dev/snd/pcmC2D0c' failed (-2): No such file or directory
+0:00:11.090746365 [34m 2985[00m 0xffff84015300 [33;01mWARN   [00m [00m                alsa gstalsasrc.c:790:gst_alsasrc_open:<alsasrc2>[00m error: Could not open audio device for recording.
+0:00:11.090777005 [34m 2985[00m 0xffff84015300 [33;01mWARN   [00m [00m                alsa gstalsasrc.c:790:gst_alsasrc_open:<alsasrc2>[00m error: Recording open error on device 'hw:2,0': No such file or directory
+0:00:16.013670720 [34m 2985[00m 0xaaaab2b1e2c0 [33;01mWARN   [00m [00m                alsa pcm_hw.c:1716:snd_pcm_hw_open:[00m alsalib error: open '/dev/snd/pcmC2D0c' failed (-2): No such file or directory
+0:00:16.018846307 [34m 2985[00m 0xaaaab2b1e2c0 [33;01mWARN   [00m [00m                alsa gstalsasrc.c:790:gst_alsasrc_open:<alsasrc3>[00m error: Could not open audio device for recording.
+0:00:16.018908463 [34m 2985[00m 0xaaaab2b1e2c0 [33;01mWARN   [00m [00m                alsa gstalsasrc.c:790:gst_alsasrc_open:<alsasrc3>[00m error: Recording open error on device 'hw:2,0': No such file or directory
+0:00:16.123332409 [34m 2985[00m 0xffff84015360 [33;01mWARN   [00m [00m                alsa pcm_hw.c:1716:snd_pcm_hw_open:[00m alsalib error: open '/dev/snd/pcmC2D0c' failed (-2): No such file or directory
+0:00:16.123482109 [34m 2985[00m 0xffff84015360 [33;01mWARN   [00m [00m                alsa gstalsasrc.c:790:gst_alsasrc_open:<alsasrc3>[00m error: Could not open audio device for recording.
+0:00:16.123516251 [34m 2985[00m 0xffff84015360 [33;01mWARN   [00m [00m                alsa gstalsasrc.c:790:gst_alsasrc_open:<alsasrc3>[00m error: Recording open error on device 'hw:2,0': No such file or directory
+0:00:21.045547514 [34m 2985[00m 0xaaaab2b1e2c0 [33;01mWARN   [00m [00m                alsa pcm_hw.c:1716:snd_pcm_hw_open:[00m alsalib error: open '/dev/snd/pcmC2D0c' failed (-2): No such file or directory
+0:00:21.050513565 [34m 2985[00m 0xaaaab2b1e2c0 [33;01mWARN   [00m [00m                alsa gstalsasrc.c:790:gst_alsasrc_open:<alsasrc4>[00m error: Could not open audio device for recording.
+0:00:21.050732673 [34m 2985[00m 0xaaaab2b1e2c0 [33;01mWARN   [00m [00m                alsa gstalsasrc.c:790:gst_alsasrc_open:<alsasrc4>[00m error: Recording open error on device 'hw:2,0': No such file or directory
+0:00:21.166341648 [34m 2985[00m 0xffff84015360 [33;01mWARN   [00m [00m                alsa pcm_hw.c:1716:snd_pcm_hw_open:[00m alsalib error: open '/dev/snd/pcmC2D0c' failed (-2): No such file or directory
+0:00:21.166460163 [34m 2985[00m 0xffff84015360 [33;01mWARN   [00m [00m                alsa gstalsasrc.c:790:gst_alsasrc_open:<alsasrc4>[00m error: Could not open audio device for recording.
+0:00:21.166489647 [34m 2985[00m 0xffff84015360 [33;01mWARN   [00m [00m                alsa gstalsasrc.c:790:gst_alsasrc_open:<alsasrc4>[00m error: Recording open error on device 'hw:2,0': No such file or directory
+Error in RTMP pipeline "<Gst.Pipeline object at 0xffff8de88840 (GstPipeline at 0xaaaab2a5e380)>":(gerror=GLib.Error('Could not open audio device for recording.', 'gst-resource-error-quark', 5), debug="../ext/alsa/gstalsasrc.c(790): gst_alsasrc_open (): /GstPipeline:pipeline1/GstAlsaSrc:alsasrc1:\nRecording open error on device 'hw:2,0': No such file or directory")
+NeedReload=True
+Calling async pipeline destruction for output_connector class "output"
+Pipeline "output" is removing
+Removed pipeline "output"
+End of calling async pipeline destruction for output_connector class "output"
+==================Creating a new pipeline=====================
+
+Gstreamer pipeline: v4l2src do-timestamp=1 device=/dev/video0 ! image/jpeg,framerate=30/1,width=1920,height=1080 ! queue ! mppjpegdec ! videoconvert !  
+                mpph264enc profile=main qos=1 header-mode=1 profile=main bps=6000000 bps-max=7000000 rc-mode=vbr ! video/x-h264,level=(string)4 ! h264parse config-interval=1 ! tee name=tee1_output ! 
+                queue ! flvmux name=mux streamable=1 ! watchdog timeout=30000 ! rtmp2sink sync=0 name=rtmpsink1output location="rtmps://f70dbe090edc.global-contribute.live-video.net:443/app/sk_ap-south-1_qyijT3UVzWC0_lheVKBu032H5BLzbcNs5c1AWAjW6zs"
+                v4l2src do-timestamp=1 device=/dev/video1 ! image/jpeg,framerate=30/1,width=1920,height=1080 ! queue ! mppjpegdec ! videoconvert !  
+                mpph264enc profile=main qos=1 header-mode=1 profile=main bps=6000000 bps-max=7000000 rc-mode=vbr ! video/x-h264,level=(string)4 ! h264parse config-interval=1 ! tee name=tee2_output ! 
+                queue ! flvmux name=mux2 streamable=1 ! watchdog timeout=30000 ! rtmp2sink sync=0 name=rtmpsink2output location="rtmps://f70dbe090edc.global-contribute.live-video.net:443/app/sk_ap-south-1_vwjBYKmgPJCD_CHQK21enDfhMBUpyxivD4uF83QMKjS"
+                alsasrc device=hw:2,0 ! audioresample ! audio/x-raw,rate=48000 ! voaacenc bitrate=96000 ! audio/mpeg ! aacparse ! audio/mpeg, mpegversion=4 ! tee name=audiotee ! queue ! mux.
+                audiotee. !  queue ! mux2. 
+                tee1_output. ! queue !  
+                splitmuxsink name=splitmuxsink1output async-handling=1 message-forward=1 max-size-time=300000000000 location=/home/nifty/Projects/bondcam_streaming/videos/start1_output.mp4
+                tee2_output. ! queue !  
+                splitmuxsink name=splitmuxsink2output async-handling=1 message-forward=1 max-size-time=300000000000 location=/home/nifty/Projects/bondcam_streaming/videos/start2_output.mp4
+
+Error in RTMP pipeline "<Gst.Pipeline object at 0xffff8de04840 (GstPipeline at 0xaaaab2a5e5a0)>":(gerror=GLib.Error('Could not open audio device for recording.', 'gst-resource-error-quark', 5), debug="../ext/alsa/gstalsasrc.c(790): gst_alsasrc_open (): /GstPipeline:pipeline0/GstAlsaSrc:alsasrc0:\nRecording open error on device 'hw:2,0': No such file or directory")
+NeedReload=True
+Calling async pipeline destruction for output_connector class "output"
+Pipeline "output" is removing
+Removed pipeline "output"
+End of calling async pipeline destruction for output_connector class "output"
+==================Creating a new pipeline=====================
+
+Gstreamer pipeline: v4l2src do-timestamp=1 device=/dev/video0 ! image/jpeg,framerate=30/1,width=1920,height=1080 ! queue ! mppjpegdec ! videoconvert !  
+                mpph264enc profile=main qos=1 header-mode=1 profile=main bps=6000000 bps-max=7000000 rc-mode=vbr ! video/x-h264,level=(string)4 ! h264parse config-interval=1 ! tee name=tee1_output ! 
+                queue ! flvmux name=mux streamable=1 ! watchdog timeout=30000 ! rtmp2sink sync=0 name=rtmpsink1output location="rtmps://f70dbe090edc.global-contribute.live-video.net:443/app/sk_ap-south-1_qyijT3UVzWC0_lheVKBu032H5BLzbcNs5c1AWAjW6zs"
+                v4l2src do-timestamp=1 device=/dev/video1 ! image/jpeg,framerate=30/1,width=1920,height=1080 ! queue ! mppjpegdec ! videoconvert !  
+                mpph264enc profile=main qos=1 header-mode=1 profile=main bps=6000000 bps-max=7000000 rc-mode=vbr ! video/x-h264,level=(string)4 ! h264parse config-interval=1 ! tee name=tee2_output ! 
+                queue ! flvmux name=mux2 streamable=1 ! watchdog timeout=30000 ! rtmp2sink sync=0 name=rtmpsink2output location="rtmps://f70dbe090edc.global-contribute.live-video.net:443/app/sk_ap-south-1_vwjBYKmgPJCD_CHQK21enDfhMBUpyxivD4uF83QMKjS"
+                alsasrc device=hw:2,0 ! audioresample ! audio/x-raw,rate=48000 ! voaacenc bitrate=96000 ! audio/mpeg ! aacparse ! audio/mpeg, mpegversion=4 ! tee name=audiotee ! queue ! mux.
+                audiotee. !  queue ! mux2. 
+                tee1_output. ! queue !  
+                splitmuxsink name=splitmuxsink1output async-handling=1 message-forward=1 max-size-time=300000000000 location=/home/nifty/Projects/bondcam_streaming/videos/start1_output.mp4
+                tee2_output. ! queue !  
+                splitmuxsink name=splitmuxsink2output async-handling=1 message-forward=1 max-size-time=300000000000 location=/home/nifty/Projects/bondcam_streaming/videos/start2_output.mp4
+
+Error in RTMP pipeline "<Gst.Pipeline object at 0xffff8de93940 (GstPipeline at 0xaaaab2a5e7c0)>":(gerror=GLib.Error('Could not open audio device for recording.', 'gst-resource-error-quark', 5), debug="../ext/alsa/gstalsasrc.c(790): gst_alsasrc_open (): /GstPipeline:pipeline2/GstAlsaSrc:alsasrc2:\nRecording open error on device 'hw:2,0': No such file or directory")
+NeedReload=True
+Calling async pipeline destruction for output_connector class "output"
+Pipeline "output" is removing
+Removed pipeline "output"
+End of calling async pipeline destruction for output_connector class "output"
+==================Creating a new pipeline=====================
+
+Gstreamer pipeline: v4l2src do-timestamp=1 device=/dev/video0 ! image/jpeg,framerate=30/1,width=1920,height=1080 ! queue ! mppjpegdec ! videoconvert !  
+                mpph264enc profile=main qos=1 header-mode=1 profile=main bps=6000000 bps-max=7000000 rc-mode=vbr ! video/x-h264,level=(string)4 ! h264parse config-interval=1 ! tee name=tee1_output ! 
+                queue ! flvmux name=mux streamable=1 ! watchdog timeout=30000 ! rtmp2sink sync=0 name=rtmpsink1output location="rtmps://f70dbe090edc.global-contribute.live-video.net:443/app/sk_ap-south-1_qyijT3UVzWC0_lheVKBu032H5BLzbcNs5c1AWAjW6zs"
+                v4l2src do-timestamp=1 device=/dev/video1 ! image/jpeg,framerate=30/1,width=1920,height=1080 ! queue ! mppjpegdec ! videoconvert !  
+                mpph264enc profile=main qos=1 header-mode=1 profile=main bps=6000000 bps-max=7000000 rc-mode=vbr ! video/x-h264,level=(string)4 ! h264parse config-interval=1 ! tee name=tee2_output ! 
+                queue ! flvmux name=mux2 streamable=1 ! watchdog timeout=30000 ! rtmp2sink sync=0 name=rtmpsink2output location="rtmps://f70dbe090edc.global-contribute.live-video.net:443/app/sk_ap-south-1_vwjBYKmgPJCD_CHQK21enDfhMBUpyxivD4uF83QMKjS"
+                alsasrc device=hw:2,0 ! audioresample ! audio/x-raw,rate=48000 ! voaacenc bitrate=96000 ! audio/mpeg ! aacparse ! audio/mpeg, mpegversion=4 ! tee name=audiotee ! queue ! mux.
+                audiotee. !  queue ! mux2. 
+                tee1_output. ! queue !  
+                splitmuxsink name=splitmuxsink1output async-handling=1 message-forward=1 max-size-time=300000000000 location=/home/nifty/Projects/bondcam_streaming/videos/start1_output.mp4
+                tee2_output. ! queue !  
+                splitmuxsink name=splitmuxsink2output async-handling=1 message-forward=1 max-size-time=300000000000 location=/home/nifty/Projects/bondcam_streaming/videos/start2_output.mp4
+
+Error in RTMP pipeline "<Gst.Pipeline object at 0xffff8de93e00 (GstPipeline at 0xaaaab2a5e9e0)>":(gerror=GLib.Error('Could not open audio device for recording.', 'gst-resource-error-quark', 5), debug="../ext/alsa/gstalsasrc.c(790): gst_alsasrc_open (): /GstPipeline:pipeline1/GstAlsaSrc:alsasrc1:\nRecording open error on device 'hw:2,0': No such file or directory")
+NeedReload=True
+Calling async pipeline destruction for output_connector class "output"
+Pipeline "output" is removing
+Removed pipeline "output"
+0:00:26.089487861 [34m 2985[00m 0xaaaab2b1e2c0 [33;01mWARN   [00m [00m                alsa pcm_hw.c:1716:snd_pcm_hw_open:[00m alsalib error: open '/dev/snd/pcmC2D0c' failed (-2): No such file or directory
+0:00:26.089656501 [34m 2985[00m 0xaaaab2b1e2c0 [33;01mWARN   [00m [00m                alsa gstalsasrc.c:790:gst_alsasrc_open:<alsasrc5>[00m error: Could not open audio device for recording.
+0:00:26.089690752 [34m 2985[00m 0xaaaab2b1e2c0 [33;01mWARN   [00m [00m                alsa gstalsasrc.c:790:gst_alsasrc_open:<alsasrc5>[00m error: Recording open error on device 'hw:2,0': No such file or directory
+0:00:26.194679345 [34m 2985[00m 0xffff60007f60 [33;01mWARN   [00m [00m                alsa pcm_hw.c:1716:snd_pcm_hw_open:[00m alsalib error: open '/dev/snd/pcmC2D0c' failed (-2): No such file or directory
+0:00:26.194814896 [34m 2985[00m 0xffff60007f60 [33;01mWARN   [00m [00m                alsa gstalsasrc.c:790:gst_alsasrc_open:<alsasrc5>[00m error: Could not open audio device for recording.
+0:00:26.194844502 [34m 2985[00m 0xffff60007f60 [33;01mWARN   [00m [00m                alsa gstalsasrc.c:790:gst_alsasrc_open:<alsasrc5>[00m error: Recording open error on device 'hw:2,0': No such file or directory
+0:00:31.116545815 [34m 2985[00m 0xaaaab2b1e2c0 [33;01mWARN   [00m [00m                alsa pcm_hw.c:1716:snd_pcm_hw_open:[00m alsalib error: open '/dev/snd/pcmC2D0c' failed (-2): No such file or directory
+0:00:31.121506081 [34m 2985[00m 0xaaaab2b1e2c0 [33;01mWARN   [00m [00m                alsa gstalsasrc.c:790:gst_alsasrc_open:<alsasrc6>[00m error: Could not open audio device for recording.
+0:00:31.121620976 [34m 2985[00m 0xaaaab2b1e2c0 [33;01mWARN   [00m [00m                alsa gstalsasrc.c:790:gst_alsasrc_open:<alsasrc6>[00m error: Recording open error on device 'hw:2,0': No such file or directory
+0:00:31.226160611 [34m 2985[00m 0xaaaab2845cc0 [33;01mWARN   [00m [00m                alsa pcm_hw.c:1716:snd_pcm_hw_open:[00m alsalib error: open '/dev/snd/pcmC2D0c' failed (-2): No such file or directory
+0:00:31.226309830 [34m 2985[00m 0xaaaab2845cc0 [33;01mWARN   [00m [00m                alsa gstalsasrc.c:790:gst_alsasrc_open:<alsasrc6>[00m error: Could not open audio device for recording.
+0:00:31.226344444 [34m 2985[00m 0xaaaab2845cc0 [33;01mWARN   [00m [00m                alsa gstalsasrc.c:790:gst_alsasrc_open:<alsasrc6>[00m error: Recording open error on device 'hw:2,0': No such file or directory
+0:00:36.148803731 [34m 2985[00m 0xaaaab2b1e2c0 [33;01mWARN   [00m [00m                alsa pcm_hw.c:1716:snd_pcm_hw_open:[00m alsalib error: open '/dev/snd/pcmC2D0c' failed (-2): No such file or directory
+0:00:36.149204407 [34m 2985[00m 0xaaaab2b1e2c0 [33;01mWARN   [00m [00m                alsa gstalsasrc.c:790:gst_alsasrc_open:<alsasrc7>[00m error: Could not open audio device for recording.
+0:00:36.149260024 [34m 2985[00m 0xaaaab2b1e2c0 [33;01mWARN   [00m [00m                alsa gstalsasrc.c:790:gst_alsasrc_open:<alsasrc7>[00m error: Recording open error on device 'hw:2,0': No such file or directory
+0:00:36.270625747 [34m 2985[00m 0xffff7c002060 [33;01mWARN   [00m [00m                alsa pcm_hw.c:1716:snd_pcm_hw_open:[00m alsalib error: open '/dev/snd/pcmC2D0c' failed (-2): No such file or directory
+0:00:36.270746025 [34m 2985[00m 0xffff7c002060 [33;01mWARN   [00m [00m                alsa gstalsasrc.c:790:gst_alsasrc_open:<alsasrc7>[00m error: Could not open audio device for recording.
+0:00:36.270776022 [34m 2985[00m 0xffff7c002060 [33;01mWARN   [00m [00m                alsa gstalsasrc.c:790:gst_alsasrc_open:<alsasrc7>[00m error: Recording open error on device 'hw:2,0': No such file or directory
+End of calling async pipeline destruction for output_connector class "output"
+==================Creating a new pipeline=====================
+
+Gstreamer pipeline: v4l2src do-timestamp=1 device=/dev/video0 ! image/jpeg,framerate=30/1,width=1920,height=1080 ! queue ! mppjpegdec ! videoconvert !  
+                mpph264enc profile=main qos=1 header-mode=1 profile=main bps=6000000 bps-max=7000000 rc-mode=vbr ! video/x-h264,level=(string)4 ! h264parse config-interval=1 ! tee name=tee1_output ! 
+                queue ! flvmux name=mux streamable=1 ! watchdog timeout=30000 ! rtmp2sink sync=0 name=rtmpsink1output location="rtmps://f70dbe090edc.global-contribute.live-video.net:443/app/sk_ap-south-1_qyijT3UVzWC0_lheVKBu032H5BLzbcNs5c1AWAjW6zs"
+                v4l2src do-timestamp=1 device=/dev/video1 ! image/jpeg,framerate=30/1,width=1920,height=1080 ! queue ! mppjpegdec ! videoconvert !  
+                mpph264enc profile=main qos=1 header-mode=1 profile=main bps=6000000 bps-max=7000000 rc-mode=vbr ! video/x-h264,level=(string)4 ! h264parse config-interval=1 ! tee name=tee2_output ! 
+                queue ! flvmux name=mux2 streamable=1 ! watchdog timeout=30000 ! rtmp2sink sync=0 name=rtmpsink2output location="rtmps://f70dbe090edc.global-contribute.live-video.net:443/app/sk_ap-south-1_vwjBYKmgPJCD_CHQK21enDfhMBUpyxivD4uF83QMKjS"
+                alsasrc device=hw:2,0 ! audioresample ! audio/x-raw,rate=48000 ! voaacenc bitrate=96000 ! audio/mpeg ! aacparse ! audio/mpeg, mpegversion=4 ! tee name=audiotee ! queue ! mux.
+                audiotee. !  queue ! mux2. 
+                tee1_output. ! queue !  
+                splitmuxsink name=splitmuxsink1output async-handling=1 message-forward=1 max-size-time=300000000000 location=/home/nifty/Projects/bondcam_streaming/videos/start1_output.mp4
+                tee2_output. ! queue !  
+                splitmuxsink name=splitmuxsink2output async-handling=1 message-forward=1 max-size-time=300000000000 location=/home/nifty/Projects/bondcam_streaming/videos/start2_output.mp4
+
+Error in RTMP pipeline "<Gst.Pipeline object at 0xffff8de960c0 (GstPipeline at 0xaaaab2a5ec00)>":(gerror=GLib.Error('Could not open audio device for recording.', 'gst-resource-error-quark', 5), debug="../ext/alsa/gstalsasrc.c(790): gst_alsasrc_open (): /GstPipeline:pipeline3/GstAlsaSrc:alsasrc3:\nRecording open error on device 'hw:2,0': No such file or directory")
+NeedReload=True
+Calling async pipeline destruction for output_connector class "output"
+Pipeline "output" is removing
+Removed pipeline "output"
+End of calling async pipeline destruction for output_connector class "output"
+==================Creating a new pipeline=====================
+
+Gstreamer pipeline: v4l2src do-timestamp=1 device=/dev/video0 ! image/jpeg,framerate=30/1,width=1920,height=1080 ! queue ! mppjpegdec ! videoconvert !  
+                mpph264enc profile=main qos=1 header-mode=1 profile=main bps=6000000 bps-max=7000000 rc-mode=vbr ! video/x-h264,level=(string)4 ! h264parse config-interval=1 ! tee name=tee1_output ! 
+                queue ! flvmux name=mux streamable=1 ! watchdog timeout=30000 ! rtmp2sink sync=0 name=rtmpsink1output location="rtmps://f70dbe090edc.global-contribute.live-video.net:443/app/sk_ap-south-1_qyijT3UVzWC0_lheVKBu032H5BLzbcNs5c1AWAjW6zs"
+                v4l2src do-timestamp=1 device=/dev/video1 ! image/jpeg,framerate=30/1,width=1920,height=1080 ! queue ! mppjpegdec ! videoconvert !  
+                mpph264enc profile=main qos=1 header-mode=1 profile=main bps=6000000 bps-max=7000000 rc-mode=vbr ! video/x-h264,level=(string)4 ! h264parse config-interval=1 ! tee name=tee2_output ! 
+                queue ! flvmux name=mux2 streamable=1 ! watchdog timeout=30000 ! rtmp2sink sync=0 name=rtmpsink2output location="rtmps://f70dbe090edc.global-contribute.live-video.net:443/app/sk_ap-south-1_vwjBYKmgPJCD_CHQK21enDfhMBUpyxivD4uF83QMKjS"
+                alsasrc device=hw:2,0 ! audioresample ! audio/x-raw,rate=48000 ! voaacenc bitrate=96000 ! audio/mpeg ! aacparse ! audio/mpeg, mpegversion=4 ! tee name=audiotee ! queue ! mux.
+                audiotee. !  queue ! mux2. 
+                tee1_output. ! queue !  
+                splitmuxsink name=splitmuxsink1output async-handling=1 message-forward=1 max-size-time=300000000000 location=/home/nifty/Projects/bondcam_streaming/videos/start1_output.mp4
+                tee2_output. ! queue !  
+                splitmuxsink name=splitmuxsink2output async-handling=1 message-forward=1 max-size-time=300000000000 location=/home/nifty/Projects/bondcam_streaming/videos/start2_output.mp4
+
+Error in RTMP pipeline "<Gst.Pipeline object at 0xffff8de7fd80 (GstPipeline at 0xaaaab2a5ee20)>":(gerror=GLib.Error('Could not open audio device for recording.', 'gst-resource-error-quark', 5), debug="../ext/alsa/gstalsasrc.c(790): gst_alsasrc_open (): /GstPipeline:pipeline4/GstAlsaSrc:alsasrc4:\nRecording open error on device 'hw:2,0': No such file or directory")
+NeedReload=True
+Calling async pipeline destruction for output_connector class "output"
+Pipeline "output" is removing
+Removed pipeline "output"
+End of calling async pipeline destruction for output_connector class "output"
+==================Creating a new pipeline=====================
+
+Gstreamer pipeline: v4l2src do-timestamp=1 device=/dev/video0 ! image/jpeg,framerate=30/1,width=1920,height=1080 ! queue ! mppjpegdec ! videoconvert !  
+                mpph264enc profile=main qos=1 header-mode=1 profile=main bps=6000000 bps-max=7000000 rc-mode=vbr ! video/x-h264,level=(string)4 ! h264parse config-interval=1 ! tee name=tee1_output ! 
+                queue ! flvmux name=mux streamable=1 ! watchdog timeout=30000 ! rtmp2sink sync=0 name=rtmpsink1output location="rtmps://f70dbe090edc.global-contribute.live-video.net:443/app/sk_ap-south-1_qyijT3UVzWC0_lheVKBu032H5BLzbcNs5c1AWAjW6zs"
+                v4l2src do-timestamp=1 device=/dev/video1 ! image/jpeg,framerate=30/1,width=1920,height=1080 ! queue ! mppjpegdec ! videoconvert !  
+                mpph264enc profile=main qos=1 header-mode=1 profile=main bps=6000000 bps-max=7000000 rc-mode=vbr ! video/x-h264,level=(string)4 ! h264parse config-interval=1 ! tee name=tee2_output ! 
+                queue ! flvmux name=mux2 streamable=1 ! watchdog timeout=30000 ! rtmp2sink sync=0 name=rtmpsink2output location="rtmps://f70dbe090edc.global-contribute.live-video.net:443/app/sk_ap-south-1_vwjBYKmgPJCD_CHQK21enDfhMBUpyxivD4uF83QMKjS"
+                alsasrc device=hw:2,0 ! audioresample ! audio/x-raw,rate=48000 ! voaacenc bitrate=96000 ! audio/mpeg ! aacparse ! audio/mpeg, mpegversion=4 ! tee name=audiotee ! queue ! mux.
+                audiotee. !  queue ! mux2. 
+                tee1_output. ! queue !  
+                splitmuxsink name=splitmuxsink1output async-handling=1 message-forward=1 max-size-time=300000000000 location=/home/nifty/Projects/bondcam_streaming/videos/start1_output.mp4
+                tee2_output. ! queue !  
+                splitmuxsink name=splitmuxsink2output async-handling=1 message-forward=1 max-size-time=300000000000 location=/home/nifty/Projects/bondcam_streaming/videos/start2_output.mp4
+
+Error in RTMP pipeline "<Gst.Pipeline object at 0xffff8de96a00 (GstPipeline at 0xaaaab2a5f040)>":(gerror=GLib.Error('Could not open audio device for recording.', 'gst-resource-error-quark', 5), debug="../ext/alsa/gstalsasrc.c(790): gst_alsasrc_open (): /GstPipeline:pipeline0/GstAlsaSrc:alsasrc0:\nRecording open error on device 'hw:2,0': No such file or directory")
+NeedReload=True
+Calling async pipeline destruction for output_connector class "output"
+Pipeline "output" is removing
+Removed pipeline "output"
+End of calling async pipeline destruction for output_connector class "output"
+==================Creating a new pipeline=====================
+
+0:00:41.191778830 [34m 2985[00m 0xaaaab2b1e2c0 [33;01mWARN   [00m [00m                alsa pcm_hw.c:1716:snd_pcm_hw_open:[00m alsalib error: open '/dev/snd/pcmC2D0c' failed (-2): No such file or directory
+0:00:41.191880802 [34m 2985[00m 0xaaaab2b1e2c0 [33;01mWARN   [00m [00m                alsa gstalsasrc.c:790:gst_alsasrc_open:<alsasrc8>[00m error: Could not open audio device for recording.
+0:00:41.191909937 [34m 2985[00m 0xaaaab2b1e2c0 [33;01mWARN   [00m [00m                alsa gstalsasrc.c:790:gst_alsasrc_open:<alsasrc8>[00m error: Recording open error on device 'hw:2,0': No such file or directory
+0:00:41.295925277 [34m 2985[00m 0xaaaab2adf060 [33;01mWARN   [00m [00m                alsa pcm_hw.c:1716:snd_pcm_hw_open:[00m alsalib error: open '/dev/snd/pcmC2D0c' failed (-2): No such file or directory
+0:00:41.296094273 [34m 2985[00m 0xaaaab2adf060 [33;01mWARN   [00m [00m                alsa gstalsasrc.c:790:gst_alsasrc_open:<alsasrc8>[00m error: Could not open audio device for recording.
+0:00:41.296128363 [34m 2985[00m 0xaaaab2adf060 [33;01mWARN   [00m [00m                alsa gstalsasrc.c:790:gst_alsasrc_open:<alsasrc8>[00m error: Recording open error on device 'hw:2,0': No such file or directory
+0:00:46.214228339 [34m 2985[00m 0xaaaab2b1e2c0 [33;01mWARN   [00m [00m                alsa pcm_hw.c:1716:snd_pcm_hw_open:[00m alsalib error: open '/dev/snd/pcmC2D0c' failed (-2): No such file or directory
+0:00:46.214365022 [34m 2985[00m 0xaaaab2b1e2c0 [33;01mWARN   [00m [00m                alsa gstalsasrc.c:790:gst_alsasrc_open:<alsasrc9>[00m error: Could not open audio device for recording.
+0:00:46.218769165 [34m 2985[00m 0xaaaab2b1e2c0 [33;01mWARN   [00m [00m                alsa gstalsasrc.c:790:gst_alsasrc_open:<alsasrc9>[00m error: Recording open error on device 'hw:2,0': No such file or directory
+0:00:46.321939603 [34m 2985[00m 0xaaaab2845d20 [33;01mWARN   [00m [00m                alsa pcm_hw.c:1716:snd_pcm_hw_open:[00m alsalib error: open '/dev/snd/pcmC2D0c' failed (-2): No such file or directory
+0:00:46.322065215 [34m 2985[00m 0xaaaab2845d20 [33;01mWARN   [00m [00m                alsa gstalsasrc.c:790:gst_alsasrc_open:<alsasrc9>[00m error: Could not open audio device for recording.
+0:00:46.322094068 [34m 2985[00m 0xaaaab2845d20 [33;01mWARN   [00m [00m                alsa gstalsasrc.c:790:gst_alsasrc_open:<alsasrc9>[00m error: Recording open error on device 'hw:2,0': No such file or directory
+0:00:51.244938202 [34m 2985[00m 0xaaaab2b1e2c0 [33;01mWARN   [00m [00m                alsa pcm_hw.c:1716:snd_pcm_hw_open:[00m alsalib error: open '/dev/snd/pcmC2D0c' failed (-2): No such file or directory
+0:00:51.250212546 [34m 2985[00m 0xaaaab2b1e2c0 [33;01mWARN   [00m [00m                alsa gstalsasrc.c:790:gst_alsasrc_open:<alsasrc10>[00m error: Could not open audio device for recording.
+0:00:51.250278129 [34m 2985[00m 0xaaaab2b1e2c0 [33;01mWARN   [00m [00m                alsa gstalsasrc.c:790:gst_alsasrc_open:<alsasrc10>[00m error: Recording open error on device 'hw:2,0': No such file or directory
+0:00:51.354310556 [34m 2985[00m 0xffff60007cc0 [33;01mWARN   [00m [00m                alsa pcm_hw.c:1716:snd_pcm_hw_open:[00m alsalib error: open '/dev/snd/pcmC2D0c' failed (-2): No such file or directory
+0:00:51.354613697 [34m 2985[00m 0xffff60007cc0 [33;01mWARN   [00m [00m                alsa gstalsasrc.c:790:gst_alsasrc_open:<alsasrc10>[00m error: Could not open audio device for recording.
+0:00:51.354660334 [34m 2985[00m 0xffff60007cc0 [33;01mWARN   [00m [00m                alsa gstalsasrc.c:790:gst_alsasrc_open:<alsasrc10>[00m error: Recording open error on device 'hw:2,0': No such file or directory
+Gstreamer pipeline: v4l2src do-timestamp=1 device=/dev/video0 ! image/jpeg,framerate=30/1,width=1920,height=1080 ! queue ! mppjpegdec ! videoconvert !  
+                mpph264enc profile=main qos=1 header-mode=1 profile=main bps=6000000 bps-max=7000000 rc-mode=vbr ! video/x-h264,level=(string)4 ! h264parse config-interval=1 ! tee name=tee1_output ! 
+                queue ! flvmux name=mux streamable=1 ! watchdog timeout=30000 ! rtmp2sink sync=0 name=rtmpsink1output location="rtmps://f70dbe090edc.global-contribute.live-video.net:443/app/sk_ap-south-1_qyijT3UVzWC0_lheVKBu032H5BLzbcNs5c1AWAjW6zs"
+                v4l2src do-timestamp=1 device=/dev/video1 ! image/jpeg,framerate=30/1,width=1920,height=1080 ! queue ! mppjpegdec ! videoconvert !  
+                mpph264enc profile=main qos=1 header-mode=1 profile=main bps=6000000 bps-max=7000000 rc-mode=vbr ! video/x-h264,level=(string)4 ! h264parse config-interval=1 ! tee name=tee2_output ! 
+                queue ! flvmux name=mux2 streamable=1 ! watchdog timeout=30000 ! rtmp2sink sync=0 name=rtmpsink2output location="rtmps://f70dbe090edc.global-contribute.live-video.net:443/app/sk_ap-south-1_vwjBYKmgPJCD_CHQK21enDfhMBUpyxivD4uF83QMKjS"
+                alsasrc device=hw:2,0 ! audioresample ! audio/x-raw,rate=48000 ! voaacenc bitrate=96000 ! audio/mpeg ! aacparse ! audio/mpeg, mpegversion=4 ! tee name=audiotee ! queue ! mux.
+                audiotee. !  queue ! mux2. 
+                tee1_output. ! queue !  
+                splitmuxsink name=splitmuxsink1output async-handling=1 message-forward=1 max-size-time=300000000000 location=/home/nifty/Projects/bondcam_streaming/videos/start1_output.mp4
+                tee2_output. ! queue !  
+                splitmuxsink name=splitmuxsink2output async-handling=1 message-forward=1 max-size-time=300000000000 location=/home/nifty/Projects/bondcam_streaming/videos/start2_output.mp4
+
+Error in RTMP pipeline "<Gst.Pipeline object at 0xffff8de96e00 (GstPipeline at 0xaaaab2a5f260)>":(gerror=GLib.Error('Could not open audio device for recording.', 'gst-resource-error-quark', 5), debug="../ext/alsa/gstalsasrc.c(790): gst_alsasrc_open (): /GstPipeline:pipeline2/GstAlsaSrc:alsasrc2:\nRecording open error on device 'hw:2,0': No such file or directory")
+NeedReload=True
+Calling async pipeline destruction for output_connector class "output"
+Pipeline "output" is removing
+Removed pipeline "output"
+End of calling async pipeline destruction for output_connector class "output"
+==================Creating a new pipeline=====================
+
+Gstreamer pipeline: v4l2src do-timestamp=1 device=/dev/video0 ! image/jpeg,framerate=30/1,width=1920,height=1080 ! queue ! mppjpegdec ! videoconvert !  
+                mpph264enc profile=main qos=1 header-mode=1 profile=main bps=6000000 bps-max=7000000 rc-mode=vbr ! video/x-h264,level=(string)4 ! h264parse config-interval=1 ! tee name=tee1_output ! 
+                queue ! flvmux name=mux streamable=1 ! watchdog timeout=30000 ! rtmp2sink sync=0 name=rtmpsink1output location="rtmps://f70dbe090edc.global-contribute.live-video.net:443/app/sk_ap-south-1_qyijT3UVzWC0_lheVKBu032H5BLzbcNs5c1AWAjW6zs"
+                v4l2src do-timestamp=1 device=/dev/video1 ! image/jpeg,framerate=30/1,width=1920,height=1080 ! queue ! mppjpegdec ! videoconvert !  
+                mpph264enc profile=main qos=1 header-mode=1 profile=main bps=6000000 bps-max=7000000 rc-mode=vbr ! video/x-h264,level=(string)4 ! h264parse config-interval=1 ! tee name=tee2_output ! 
+                queue ! flvmux name=mux2 streamable=1 ! watchdog timeout=30000 ! rtmp2sink sync=0 name=rtmpsink2output location="rtmps://f70dbe090edc.global-contribute.live-video.net:443/app/sk_ap-south-1_vwjBYKmgPJCD_CHQK21enDfhMBUpyxivD4uF83QMKjS"
+                alsasrc device=hw:2,0 ! audioresample ! audio/x-raw,rate=48000 ! voaacenc bitrate=96000 ! audio/mpeg ! aacparse ! audio/mpeg, mpegversion=4 ! tee name=audiotee ! queue ! mux.
+                audiotee. !  queue ! mux2. 
+                tee1_output. ! queue !  
+                splitmuxsink name=splitmuxsink1output async-handling=1 message-forward=1 max-size-time=300000000000 location=/home/nifty/Projects/bondcam_streaming/videos/start1_output.mp4
+                tee2_output. ! queue !  
+                splitmuxsink name=splitmuxsink2output async-handling=1 message-forward=1 max-size-time=300000000000 location=/home/nifty/Projects/bondcam_streaming/videos/start2_output.mp4
+
+Error in RTMP pipeline "<Gst.Pipeline object at 0xffff8de87600 (GstPipeline at 0xaaaab2a5f480)>":(gerror=GLib.Error('Could not open audio device for recording.', 'gst-resource-error-quark', 5), debug="../ext/alsa/gstalsasrc.c(790): gst_alsasrc_open (): /GstPipeline:pipeline5/GstAlsaSrc:alsasrc5:\nRecording open error on device 'hw:2,0': No such file or directory")
+NeedReload=True
+Calling async pipeline destruction for output_connector class "output"
+Pipeline "output" is removing
+Removed pipeline "output"
+End of calling async pipeline destruction for output_connector class "output"
+==================Creating a new pipeline=====================
+
+Gstreamer pipeline: v4l2src do-timestamp=1 device=/dev/video0 ! image/jpeg,framerate=30/1,width=1920,height=1080 ! queue ! mppjpegdec ! videoconvert !  
+                mpph264enc profile=main qos=1 header-mode=1 profile=main bps=6000000 bps-max=7000000 rc-mode=vbr ! video/x-h264,level=(string)4 ! h264parse config-interval=1 ! tee name=tee1_output ! 
+                queue ! flvmux name=mux streamable=1 ! watchdog timeout=30000 ! rtmp2sink sync=0 name=rtmpsink1output location="rtmps://f70dbe090edc.global-contribute.live-video.net:443/app/sk_ap-south-1_qyijT3UVzWC0_lheVKBu032H5BLzbcNs5c1AWAjW6zs"
+                v4l2src do-timestamp=1 device=/dev/video1 ! image/jpeg,framerate=30/1,width=1920,height=1080 ! queue ! mppjpegdec ! videoconvert !  
+                mpph264enc profile=main qos=1 header-mode=1 profile=main bps=6000000 bps-max=7000000 rc-mode=vbr ! video/x-h264,level=(string)4 ! h264parse config-interval=1 ! tee name=tee2_output ! 
+                queue ! flvmux name=mux2 streamable=1 ! watchdog timeout=30000 ! rtmp2sink sync=0 name=rtmpsink2output location="rtmps://f70dbe090edc.global-contribute.live-video.net:443/app/sk_ap-south-1_vwjBYKmgPJCD_CHQK21enDfhMBUpyxivD4uF83QMKjS"
+                alsasrc device=hw:2,0 ! audioresample ! audio/x-raw,rate=48000 ! voaacenc bitrate=96000 ! audio/mpeg ! aacparse ! audio/mpeg, mpegversion=4 ! tee name=audiotee ! queue ! mux.
+                audiotee. !  queue ! mux2. 
+                tee1_output. ! queue !  
+                splitmuxsink name=splitmuxsink1output async-handling=1 message-forward=1 max-size-time=300000000000 location=/home/nifty/Projects/bondcam_streaming/videos/start1_output.mp4
+                tee2_output. ! queue !  
+                splitmuxsink name=splitmuxsink2output async-handling=1 message-forward=1 max-size-time=300000000000 location=/home/nifty/Projects/bondcam_streaming/videos/start2_output.mp4
+
+Error in RTMP pipeline "<Gst.Pipeline object at 0xffff8de97b00 (GstPipeline at 0xaaaab2a5f6a0)>":(gerror=GLib.Error('Could not open audio device for recording.', 'gst-resource-error-quark', 5), debug="../ext/alsa/gstalsasrc.c(790): gst_alsasrc_open (): /GstPipeline:pipeline6/GstAlsaSrc:alsasrc6:\nRecording open error on device 'hw:2,0': No such file or directory")
+NeedReload=True
+Calling async pipeline destruction for output_connector class "output"
+Pipeline "output" is removing
+Removed pipeline "output"
+End of calling async pipeline destruction for output_connector class "output"
+==================Creating a new pipeline=====================
+
+0:00:56.277926031 [34m 2985[00m 0xaaaab2b1e2c0 [33;01mWARN   [00m [00m                alsa pcm_hw.c:1716:snd_pcm_hw_open:[00m alsalib error: open '/dev/snd/pcmC2D0c' failed (-2): No such file or directory
+0:00:56.278257250 [34m 2985[00m 0xaaaab2b1e2c0 [33;01mWARN   [00m [00m                alsa gstalsasrc.c:790:gst_alsasrc_open:<alsasrc11>[00m error: Could not open audio device for recording.
+0:00:56.278298325 [34m 2985[00m 0xaaaab2b1e2c0 [33;01mWARN   [00m [00m                alsa gstalsasrc.c:790:gst_alsasrc_open:<alsasrc11>[00m error: Recording open error on device 'hw:2,0': No such file or directory
+0:00:56.382681485 [34m 2985[00m 0xaaaab2b6a760 [33;01mWARN   [00m [00m                alsa pcm_hw.c:1716:snd_pcm_hw_open:[00m alsalib error: open '/dev/snd/pcmC2D0c' failed (-2): No such file or directory
+0:00:56.382807913 [34m 2985[00m 0xaaaab2b6a760 [33;01mWARN   [00m [00m                alsa gstalsasrc.c:790:gst_alsasrc_open:<alsasrc11>[00m error: Could not open audio device for recording.
+0:00:56.382838792 [34m 2985[00m 0xaaaab2b6a760 [33;01mWARN   [00m [00m                alsa gstalsasrc.c:790:gst_alsasrc_open:<alsasrc11>[00m error: Recording open error on device 'hw:2,0': No such file or directory
+0:01:01.303470763 [34m 2985[00m 0xaaaab2b1e2c0 [33;01mWARN   [00m [00m                alsa pcm_hw.c:1716:snd_pcm_hw_open:[00m alsalib error: open '/dev/snd/pcmC2D0c' failed (-2): No such file or directory
+0:01:01.308390809 [34m 2985[00m 0xaaaab2b1e2c0 [33;01mWARN   [00m [00m                alsa gstalsasrc.c:790:gst_alsasrc_open:<alsasrc12>[00m error: Could not open audio device for recording.
+0:01:01.308438884 [34m 2985[00m 0xaaaab2b1e2c0 [33;01mWARN   [00m [00m                alsa gstalsasrc.c:790:gst_alsasrc_open:<alsasrc12>[00m error: Recording open error on device 'hw:2,0': No such file or directory
+0:01:01.437548563 [34m 2985[00m 0xffff84015240 [33;01mWARN   [00m [00m                alsa pcm_hw.c:1716:snd_pcm_hw_open:[00m alsalib error: open '/dev/snd/pcmC2D0c' failed (-2): No such file or directory
+0:01:01.437794769 [34m 2985[00m 0xffff84015240 [33;01mWARN   [00m [00m                alsa gstalsasrc.c:790:gst_alsasrc_open:<alsasrc12>[00m error: Could not open audio device for recording.
+0:01:01.437837600 [34m 2985[00m 0xffff84015240 [33;01mWARN   [00m [00m                alsa gstalsasrc.c:790:gst_alsasrc_open:<alsasrc12>[00m error: Recording open error on device 'hw:2,0': No such file or directory
+0:01:06.359073952 [34m 2985[00m 0xaaaab2b1e2c0 [33;01mWARN   [00m [00m                alsa pcm_hw.c:1716:snd_pcm_hw_open:[00m alsalib error: open '/dev/snd/pcmC2D0c' failed (-2): No such file or directory
+0:01:06.359337095 [34m 2985[00m 0xaaaab2b1e2c0 [33;01mWARN   [00m [00m                alsa gstalsasrc.c:790:gst_alsasrc_open:<alsasrc13>[00m error: Could not open audio device for recording.
+0:01:06.359376727 [34m 2985[00m 0xaaaab2b1e2c0 [33;01mWARN   [00m [00m                alsa gstalsasrc.c:790:gst_alsasrc_open:<alsasrc13>[00m error: Recording open error on device 'hw:2,0': No such file or directory
+0:01:06.462816928 [34m 2985[00m 0xffff7c0170c0 [33;01mWARN   [00m [00m                alsa pcm_hw.c:1716:snd_pcm_hw_open:[00m alsalib error: open '/dev/snd/pcmC2D0c' failed (-2): No such file or directory
+0:01:06.462984489 [34m 2985[00m 0xffff7c0170c0 [33;01mWARN   [00m [00m                alsa gstalsasrc.c:790:gst_alsasrc_open:<alsasrc13>[00m error: Could not open audio device for recording.
+0:01:06.463015670 [34m 2985[00m 0xffff7c0170c0 [33;01mWARN   [00m [00m                alsa gstalsasrc.c:790:gst_alsasrc_open:<alsasrc13>[00m error: Recording open error on device 'hw:2,0': No such file or directory
+Gstreamer pipeline: v4l2src do-timestamp=1 device=/dev/video0 ! image/jpeg,framerate=30/1,width=1920,height=1080 ! queue ! mppjpegdec ! videoconvert !  
+                mpph264enc profile=main qos=1 header-mode=1 profile=main bps=6000000 bps-max=7000000 rc-mode=vbr ! video/x-h264,level=(string)4 ! h264parse config-interval=1 ! tee name=tee1_output ! 
+                queue ! flvmux name=mux streamable=1 ! watchdog timeout=30000 ! rtmp2sink sync=0 name=rtmpsink1output location="rtmps://f70dbe090edc.global-contribute.live-video.net:443/app/sk_ap-south-1_qyijT3UVzWC0_lheVKBu032H5BLzbcNs5c1AWAjW6zs"
+                v4l2src do-timestamp=1 device=/dev/video1 ! image/jpeg,framerate=30/1,width=1920,height=1080 ! queue ! mppjpegdec ! videoconvert !  
+                mpph264enc profile=main qos=1 header-mode=1 profile=main bps=6000000 bps-max=7000000 rc-mode=vbr ! video/x-h264,level=(string)4 ! h264parse config-interval=1 ! tee name=tee2_output ! 
+                queue ! flvmux name=mux2 streamable=1 ! watchdog timeout=30000 ! rtmp2sink sync=0 name=rtmpsink2output location="rtmps://f70dbe090edc.global-contribute.live-video.net:443/app/sk_ap-south-1_vwjBYKmgPJCD_CHQK21enDfhMBUpyxivD4uF83QMKjS"
+                alsasrc device=hw:2,0 ! audioresample ! audio/x-raw,rate=48000 ! voaacenc bitrate=96000 ! audio/mpeg ! aacparse ! audio/mpeg, mpegversion=4 ! tee name=audiotee ! queue ! mux.
+                audiotee. !  queue ! mux2. 
+                tee1_output. ! queue !  
+                splitmuxsink name=splitmuxsink1output async-handling=1 message-forward=1 max-size-time=300000000000 location=/home/nifty/Projects/bondcam_streaming/videos/start1_output.mp4
+                tee2_output. ! queue !  
+                splitmuxsink name=splitmuxsink2output async-handling=1 message-forward=1 max-size-time=300000000000 location=/home/nifty/Projects/bondcam_streaming/videos/start2_output.mp4
+
+Error in RTMP pipeline "<Gst.Pipeline object at 0xffff8de97f40 (GstPipeline at 0xaaaab2a5f8c0)>":(gerror=GLib.Error('Could not open audio device for recording.', 'gst-resource-error-quark', 5), debug="../ext/alsa/gstalsasrc.c(790): gst_alsasrc_open (): /GstPipeline:pipeline7/GstAlsaSrc:alsasrc7:\nRecording open error on device 'hw:2,0': No such file or directory")
+NeedReload=True
+Calling async pipeline destruction for output_connector class "output"
+Pipeline "output" is removing
+Removed pipeline "output"
+End of calling async pipeline destruction for output_connector class "output"
+==================Creating a new pipeline=====================
+
+Gstreamer pipeline: v4l2src do-timestamp=1 device=/dev/video0 ! image/jpeg,framerate=30/1,width=1920,height=1080 ! queue ! mppjpegdec ! videoconvert !  
+                mpph264enc profile=main qos=1 header-mode=1 profile=main bps=6000000 bps-max=7000000 rc-mode=vbr ! video/x-h264,level=(string)4 ! h264parse config-interval=1 ! tee name=tee1_output ! 
+                queue ! flvmux name=mux streamable=1 ! watchdog timeout=30000 ! rtmp2sink sync=0 name=rtmpsink1output location="rtmps://f70dbe090edc.global-contribute.live-video.net:443/app/sk_ap-south-1_qyijT3UVzWC0_lheVKBu032H5BLzbcNs5c1AWAjW6zs"
+                v4l2src do-timestamp=1 device=/dev/video1 ! image/jpeg,framerate=30/1,width=1920,height=1080 ! queue ! mppjpegdec ! videoconvert !  
+                mpph264enc profile=main qos=1 header-mode=1 profile=main bps=6000000 bps-max=7000000 rc-mode=vbr ! video/x-h264,level=(string)4 ! h264parse config-interval=1 ! tee name=tee2_output ! 
+                queue ! flvmux name=mux2 streamable=1 ! watchdog timeout=30000 ! rtmp2sink sync=0 name=rtmpsink2output location="rtmps://f70dbe090edc.global-contribute.live-video.net:443/app/sk_ap-south-1_vwjBYKmgPJCD_CHQK21enDfhMBUpyxivD4uF83QMKjS"
+                alsasrc device=hw:2,0 ! audioresample ! audio/x-raw,rate=48000 ! voaacenc bitrate=96000 ! audio/mpeg ! aacparse ! audio/mpeg, mpegversion=4 ! tee name=audiotee ! queue ! mux.
+                audiotee. !  queue ! mux2. 
+                tee1_output. ! queue !  
+                splitmuxsink name=splitmuxsink1output async-handling=1 message-forward=1 max-size-time=300000000000 location=/home/nifty/Projects/bondcam_streaming/videos/start1_output.mp4
+                tee2_output. ! queue !  
+                splitmuxsink name=splitmuxsink2output async-handling=1 message-forward=1 max-size-time=300000000000 location=/home/nifty/Projects/bondcam_streaming/videos/start2_output.mp4
+
+Started removing old files job
+Exception at callback [Errno 2] No such file or directory: '/home/nifty/Projects/bondcam_streaming/videos/'
+Error in RTMP pipeline "<Gst.Pipeline object at 0xffff8de98240 (GstPipeline at 0xaaaab2a5fae0)>":(gerror=GLib.Error('Could not open audio device for recording.', 'gst-resource-error-quark', 5), debug="../ext/alsa/gstalsasrc.c(790): gst_alsasrc_open (): /GstPipeline:pipeline3/GstAlsaSrc:alsasrc3:\nRecording open error on device 'hw:2,0': No such file or directory")
+NeedReload=True
+Calling async pipeline destruction for output_connector class "output"
+Pipeline "output" is removing
+Removed pipeline "output"
+End of calling async pipeline destruction for output_connector class "output"
+==================Creating a new pipeline=====================
+
+Gstreamer pipeline: v4l2src do-timestamp=1 device=/dev/video0 ! image/jpeg,framerate=30/1,width=1920,height=1080 ! queue ! mppjpegdec ! videoconvert !  
+                mpph264enc profile=main qos=1 header-mode=1 profile=main bps=6000000 bps-max=7000000 rc-mode=vbr ! video/x-h264,level=(string)4 ! h264parse config-interval=1 ! tee name=tee1_output ! 
+                queue ! flvmux name=mux streamable=1 ! watchdog timeout=30000 ! rtmp2sink sync=0 name=rtmpsink1output location="rtmps://f70dbe090edc.global-contribute.live-video.net:443/app/sk_ap-south-1_qyijT3UVzWC0_lheVKBu032H5BLzbcNs5c1AWAjW6zs"
+                v4l2src do-timestamp=1 device=/dev/video1 ! image/jpeg,framerate=30/1,width=1920,height=1080 ! queue ! mppjpegdec ! videoconvert !  
+                mpph264enc profile=main qos=1 header-mode=1 profile=main bps=6000000 bps-max=7000000 rc-mode=vbr ! video/x-h264,level=(string)4 ! h264parse config-interval=1 ! tee name=tee2_output ! 
+                queue ! flvmux name=mux2 streamable=1 ! watchdog timeout=30000 ! rtmp2sink sync=0 name=rtmpsink2output location="rtmps://f70dbe090edc.global-contribute.live-video.net:443/app/sk_ap-south-1_vwjBYKmgPJCD_CHQK21enDfhMBUpyxivD4uF83QMKjS"
+                alsasrc device=hw:2,0 ! audioresample ! audio/x-raw,rate=48000 ! voaacenc bitrate=96000 ! audio/mpeg ! aacparse ! audio/mpeg, mpegversion=4 ! tee name=audiotee ! queue ! mux.
+                audiotee. !  queue ! mux2. 
+                tee1_output. ! queue !  
+                splitmuxsink name=splitmuxsink1output async-handling=1 message-forward=1 max-size-time=300000000000 location=/home/nifty/Projects/bondcam_streaming/videos/start1_output.mp4
+                tee2_output. ! queue !  
+                splitmuxsink name=splitmuxsink2output async-handling=1 message-forward=1 max-size-time=300000000000 location=/home/nifty/Projects/bondcam_streaming/videos/start2_output.mp4
+
+Error in RTMP pipeline "<Gst.Pipeline object at 0xffff8de08680 (GstPipeline at 0xaaaab2a5fd00)>":(gerror=GLib.Error('Could not open audio device for recording.', 'gst-resource-error-quark', 5), debug="../ext/alsa/gstalsasrc.c(790): gst_alsasrc_open (): /GstPipeline:pipeline8/GstAlsaSrc:alsasrc8:\nRecording open error on device 'hw:2,0': No such file or directory")
+NeedReload=True
+Calling async pipeline destruction for output_connector class "output"
+Pipeline "output" is removing
+Removed pipeline "output"
+End of calling async pipeline destruction for output_connector class "output"
+==================Creating a new pipeline=====================
+
+0:01:11.390926119 [34m 2985[00m 0xaaaab2b1e2c0 [33;01mWARN   [00m [00m                alsa pcm_hw.c:1716:snd_pcm_hw_open:[00m alsalib error: open '/dev/snd/pcmC2D0c' failed (-2): No such file or directory
+0:01:11.391242040 [34m 2985[00m 0xaaaab2b1e2c0 [33;01mWARN   [00m [00m                alsa gstalsasrc.c:790:gst_alsasrc_open:<alsasrc14>[00m error: Could not open audio device for recording.
+0:01:11.391284299 [34m 2985[00m 0xaaaab2b1e2c0 [33;01mWARN   [00m [00m                alsa gstalsasrc.c:790:gst_alsasrc_open:<alsasrc14>[00m error: Recording open error on device 'hw:2,0': No such file or directory
+0:01:11.494061504 [34m 2985[00m 0xffff7c017240 [33;01mWARN   [00m [00m                alsa pcm_hw.c:1716:snd_pcm_hw_open:[00m alsalib error: open '/dev/snd/pcmC2D0c' failed (-2): No such file or directory
+0:01:11.494126786 [34m 2985[00m 0xffff7c017240 [33;01mWARN   [00m [00m                alsa gstalsasrc.c:790:gst_alsasrc_open:<alsasrc14>[00m error: Could not open audio device for recording.
+0:01:11.494136987 [34m 2985[00m 0xffff7c017240 [33;01mWARN   [00m [00m                alsa gstalsasrc.c:790:gst_alsasrc_open:<alsasrc14>[00m error: Recording open error on device 'hw:2,0': No such file or directory
+0:01:16.414520075 [34m 2985[00m 0xaaaab2b1e2c0 [33;01mWARN   [00m [00m                alsa pcm_hw.c:1716:snd_pcm_hw_open:[00m alsalib error: open '/dev/snd/pcmC2D0c' failed (-2): No such file or directory
+0:01:16.414764321 [34m 2985[00m 0xaaaab2b1e2c0 [33;01mWARN   [00m [00m                alsa gstalsasrc.c:790:gst_alsasrc_open:<alsasrc15>[00m error: Could not open audio device for recording.
+0:01:16.419239152 [34m 2985[00m 0xaaaab2b1e2c0 [33;01mWARN   [00m [00m                alsa gstalsasrc.c:790:gst_alsasrc_open:<alsasrc15>[00m error: Recording open error on device 'hw:2,0': No such file or directory
+0:01:16.523193194 [34m 2985[00m 0xffff60023f00 [33;01mWARN   [00m [00m                alsa pcm_hw.c:1716:snd_pcm_hw_open:[00m alsalib error: open '/dev/snd/pcmC2D0c' failed (-2): No such file or directory
+0:01:16.523338343 [34m 2985[00m 0xffff60023f00 [33;01mWARN   [00m [00m                alsa gstalsasrc.c:790:gst_alsasrc_open:<alsasrc15>[00m error: Could not open audio device for recording.
+0:01:16.523370112 [34m 2985[00m 0xffff60023f00 [33;01mWARN   [00m [00m                alsa gstalsasrc.c:790:gst_alsasrc_open:<alsasrc15>[00m error: Recording open error on device 'hw:2,0': No such file or directory
