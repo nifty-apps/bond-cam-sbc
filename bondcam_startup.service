@@ -3,7 +3,7 @@ Description=Bond-cam startup service
 
 [Service]
 User=nifty
-ExecStart=/bin/bash -c 'git pull https://bond-cam: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@github.com/nifty-apps/bond-cam-sbc.git /home/nifty/Projects/bondcam_streaming'
+ExecStart=/bin/bash -c 'git -C /home/nifty/Projects/bondcam_streaming pull https://bond-cam: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@github.com/nifty-apps/bond-cam-sbc.git'
 ExecReload=/bin/kill -HUP $MAINPID
 KillMode=process
 IgnoreSIGPIPE=true
