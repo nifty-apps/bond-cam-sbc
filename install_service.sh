@@ -4,7 +4,6 @@ pip3 install python-dotenv
 mkdir /home/nifty/Projects
 cd /home/nifty/Projects
 git clone https://bond-cam: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@github.com/nifty-apps/bond-cam-sbc.git /home/nifty/Projects/bondcam_streaming
-mkdir -p /home/nifty/Projects/bondcam_streaming/videos/
 chown -R nifty /home/nifty/Projects/bondcam_streaming
 cd /home/nifty/Projects/bondcam_streaming
 mv .env.default .env
