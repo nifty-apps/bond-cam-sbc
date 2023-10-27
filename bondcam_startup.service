@@ -1,0 +1,16 @@
+[Unit]
+Description=Bond-cam startup service
+
+[Service]
+User=nifty
+ExecStart=/bin/bash -c 'git pull https://bond-cam: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@github.com/nifty-apps/bond-cam-sbc.git /home/nifty/Projects/bondcam_streaming'
+ExecReload=/bin/kill -HUP $MAINPID
+KillMode=process
+IgnoreSIGPIPE=true
+Restart=no
+Type=simple
+StandardOutput=append:/home/nifty/Projects/bondcam_startup.log
+StandardError=append:/home/nifty/Projects/bondcam_startup.log
+
+[Install]
+WantedBy=multi-user.target
