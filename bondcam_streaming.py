@@ -199,8 +199,15 @@ class output_connector():
     def error_callback(self, bus, msg):
         print(f'Error in RTMP pipeline "{self.pipeline}":{msg.parse_error()}')
 
-        print('NeedReload=True')
-        self.launch_pipeline()
+        if self.pipeline:
+            print(f'Calling async pipeline destruction for output_connector class "{self.label}"')
+            self.pipeline.call_async(remove_pipeline, self.label)
+            time.sleep(5)
+            print(f'End of calling async pipeline destruction for output_connector class "{self.label}"')
+
+        exit(2)
+        # print('NeedReload=True')
+        # self.launch_pipeline()
         return Gst.PadProbeReturn.OK
 
     def state_changed_callback(self, bus, msg):
