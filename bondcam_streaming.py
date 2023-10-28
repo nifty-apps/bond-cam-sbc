@@ -27,6 +27,7 @@ DO_LOCAL_OUTPUT = int(os.environ["DO_LOCAL_OUTPUT"])
 LOCAL_ENDPOINT1 = os.environ["LOCAL_ENDPOINT1"]
 LOCAL_ENDPOINT2 = os.environ["LOCAL_ENDPOINT2"]
 AUTO_DETECT_USB_PORTS = int(os.environ["AUTO_DETECT_USB_PORTS"])
+CHECK_USB_EVERY = int(os.environ["CHECK_USB_EVERY"])#seconds - check usb cameras
 
 os.environ["GST_DEBUG"] = '2,flvmux:1'
 
@@ -34,7 +35,10 @@ import sys
 import gi
 gi.require_version('Gst', '1.0')
 from gi.repository import GLib, Gst
-from configparser import ConfigParser
+
+l_devices = None
+d_counter = None
+
 
 def remove_old_files(folder, extension, hours_delta):
     now = datetime.now()
@@ -63,6 +67,54 @@ def cb_timeout(b):
         return True
     return True
 
+
+def get_usb_devices():
+    cmd_devices = """v4l2-ctl --list-devices"""
+    devicesstr = subprocess.run(["bash", "-c", cmd_devices], stdout=subprocess.PIPE)
+    devices = devicesstr.stdout.decode('utf-8')
+    d_counter = 0
+    l_devices = []
+    for d in devices.split('\n\n'):
+        if len(d) > 0:
+            d_counter += 1
+            d_name = d.split('\n\t')[0]
+            d_address = d.split('\n\t')[1]
+            l_devices.append(d_address)
+            print(f'Found device #{d_counter}: address {d_address} name {d_name}')
+    if d_counter > 2:
+        print(f'More than 2 cameras found, we would use first 2')
+    elif d_counter == 2:
+        print(f'All 2 cameras found automatically')
+    elif d_counter == 0:
+        print('Unable to find cameras')
+    elif d_counter == 1:
+        print('Only 1 camera found')
+    return l_devices, d_counter
+
+def compare_usb_devices(l_devices, d_counter, l_devices_new, d_counter_new):
+    if (d_counter != d_counter_new) or (len(l_devices) != len(l_devices_new)):
+        print('Number of USB cameras changed')
+        return False
+    else:
+        for i in range(len(l_devices)):
+            if l_devices[i] != l_devices_new[i]:
+                return False
+    return True
+
+def cb_check_usb(b):
+    try:
+        #print('Performing USB check')
+        l_devices_new, d_counter_new = get_usb_devices()
+        if not compare_usb_devices(l_devices, d_counter, l_devices_new, d_counter_new):
+            print('Connected USB cameras configuration changed. Relaunching script')
+            exit(3)
+        else:
+            pass
+            #print('No changes of USB cameras observed')
+    except Exception as ex:
+        print(f'Exception at USB check callback: {str(ex)}')
+        return True
+    return True
 
 def remove_pipeline(pipeline, label):
     print(f'Pipeline "{label}" is removing')
@@ -152,8 +204,6 @@ class output_connector():
         self.bus.connect('message::warning', self.on_warning)
         self.bus.connect('message::stream_status', self.on_stream_status)
         self.bus.connect('message::request_state', self.on_request_state)
-
-        GLib.timeout_add_seconds(CHECK_FILES_EVERY, cb_timeout, self.pipeline)
 
         sink = self.pipeline.get_by_name(f'splitmuxsink1{self.label}')
         sink.connect('format-location', self.format_location_callback1)
@@ -270,6 +320,7 @@ class output_connector():
             self.pipeline=None
 
 def main(args):
+    global l_devices, d_counter
 
     Gst.init(None)
 
@@ -280,26 +331,7 @@ def main(args):
 
     print(f'Cpu serial is {serial}')
 
-    cmd_devices = """v4l2-ctl --list-devices"""
-    devicesstr = subprocess.run(["bash", "-c", cmd_devices], stdout=subprocess.PIPE)
-    devices = devicesstr.stdout.decode('utf-8')
-    d_counter = 0
-    l_devices = []
-    for d in devices.split('\n\n'):
-        if len(d) > 0:
-            d_counter += 1
-            d_name = d.split('\n\t')[0]
-            d_address = d.split('\n\t')[1]
-            l_devices.append(d_address)
-            print(f'Found device #{d_counter}: address {d_address} name {d_name}')
-    if d_counter > 2:
-        print(f'More than 2 cameras found, we would use first 2')
-    elif d_counter == 2:
-        print(f'All 2 cameras found automatically')
-    elif d_counter == 0:
-        print('Unable to find cameras')
-    elif d_counter == 1:
-        print('Only 1 camera found')
+    l_devices, d_counter = get_usb_devices()
 
     data = {
         "serial": serial
@@ -333,6 +365,9 @@ def main(args):
         output = output_connector('output', VIDEO_FOLDER, streaming_address1, streaming_address2, l_devices[0], None)
     else:
         output=output_connector('output', VIDEO_FOLDER, streaming_address1, streaming_address2, VIDEO_DEVICE1, VIDEO_DEVICE2)
+
+    GLib.timeout_add_seconds(CHECK_FILES_EVERY, cb_timeout, None)
+    GLib.timeout_add_seconds(CHECK_USB_EVERY, cb_check_usb, None)
 
     output.run_pipeline()
 
