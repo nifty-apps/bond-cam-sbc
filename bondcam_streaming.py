@@ -3,7 +3,6 @@ import os
 from os import path, listdir, remove
 from datetime import datetime
 import time
-from itertools import cycle
 import requests
 import subprocess
 import re
@@ -28,6 +27,7 @@ LOCAL_ENDPOINT1 = os.environ["LOCAL_ENDPOINT1"]
 LOCAL_ENDPOINT2 = os.environ["LOCAL_ENDPOINT2"]
 AUTO_DETECT_USB_PORTS = int(os.environ["AUTO_DETECT_USB_PORTS"])
 CHECK_USB_EVERY = int(os.environ["CHECK_USB_EVERY"])#seconds - check usb cameras
+CHECK_SETTINGS_EVERY = int(os.environ["CHECK_SETTINGS_EVERY"])#seconds - check settings for cameras by API
 
 os.environ["GST_DEBUG"] = '2,flvmux:1'
 
@@ -38,7 +38,10 @@ from gi.repository import GLib, Gst
 
 l_devices = None
 d_counter = None
-
+current_settings1 = None
+current_settings2 = None
+output = None
+serial = None
 
 def remove_old_files(folder, extension, hours_delta):
     now = datetime.now()
@@ -116,6 +119,37 @@ def cb_check_usb(b):
         return True
     return True
 
+def get_cameras_settings():
+    try:
+        req3 = requests.post(INTEGRATION_ENDPOINT, data={"serial": serial})
+        req_data = req3.json()
+        settings1 = {'bitrate': req_data['data']['channels'][0]['bitrate'] * 1000,
+                     'white_balance': req_data['data']['channels'][0]['whiteBalance']}
+        settings2 = {'bitrate': req_data['data']['channels'][1]['bitrate'] * 1000,
+                     'white_balance': req_data['data']['channels'][1]['whiteBalance']}
+    except:
+        settings1, settings2 = current_settings1, current_settings2
+    return settings1, settings2
+
+def cb_check_settings(b):
+    global current_settings1, current_settings2
+    try:
+        #print('Performing USB check')
+        settings1, settings2 = get_cameras_settings()
+        if (len(set(current_settings1.items()) ^ set(settings1.items())) > 0) or (len(set(current_settings2.items()) ^ set(settings2.items())) > 0) :
+            print('Camera settings changed. Adjusting')
+            output.modify_settings(settings1, settings2)
+            current_settings1 = settings1
+            current_settings2 = settings2
+        else:
+            pass
+            #print('No changes of settings observed')
+    except Exception as ex:
+        print(f'Exception at settings check callback: {str(ex)}')
+        return True
+    return True
+
+
 def remove_pipeline(pipeline, label):
     print(f'Pipeline "{label}" is removing')
 
@@ -137,7 +171,7 @@ def remove_pipeline(pipeline, label):
     print(f'Removed pipeline "{label}"')
 
 class output_connector():
-    def __init__(self, label, save_path, rtmp_path1, rtmp_path2, device1, device2):
+    def __init__(self, label, save_path, rtmp_path1, rtmp_path2, device1, device2, settings1, settings2):
         print(f'Init output_connector "{label}" class')
         self.pipeline=None
         self.label=label
@@ -151,6 +185,8 @@ class output_connector():
         self.active_camera=None
         self.device1 = device1
         self.device2 = device2
+        self.settings1 = settings1
+        self.settings2 = settings2
 
         if self.device1 and self.device2:
             self.num_devices = 2
@@ -172,10 +208,10 @@ class output_connector():
         print(f'==================Creating a new pipeline=====================\n')
         if self.num_devices == 2:
             gcommand = f"""v4l2src do-timestamp=1 device={self.device1} ! image/jpeg,framerate={VIDEO_FRAMERATE1}/1,width=1920,height=1080 ! queue ! mppjpegdec ! videoconvert !  
-                mpph264enc profile=main qos=1 header-mode=1 profile=main bps={BITRATE} bps-max={BITRATE+1000000} rc-mode=vbr ! video/x-h264,level=(string)4 ! h264parse config-interval=1 ! tee name=tee1_{self.label} ! 
+                mpph264enc name=encoder1 profile=main qos=1 header-mode=1 profile=main bps={BITRATE} bps-max={BITRATE+1000000} rc-mode=vbr ! video/x-h264,level=(string)4 ! h264parse config-interval=1 ! tee name=tee1_{self.label} ! 
                 queue ! flvmux name=mux streamable=1 ! watchdog timeout={self.watchdog_timeout} ! {rtmp_output_element} sync=0 name=rtmpsink1{self.label} location=\"{self.rtmp_path1}\"
                 v4l2src do-timestamp=1 device={self.device2} ! image/jpeg,framerate={VIDEO_FRAMERATE2}/1,width=1920,height=1080 ! queue ! mppjpegdec ! videoconvert !  
-                mpph264enc profile=main qos=1 header-mode=1 profile=main bps={BITRATE} bps-max={BITRATE+1000000} rc-mode=vbr ! video/x-h264,level=(string)4 ! h264parse config-interval=1 ! tee name=tee2_{self.label} ! 
+                mpph264enc name=encoder2 profile=main qos=1 header-mode=1 profile=main bps={BITRATE} bps-max={BITRATE+1000000} rc-mode=vbr ! video/x-h264,level=(string)4 ! h264parse config-interval=1 ! tee name=tee2_{self.label} ! 
                 queue ! flvmux name=mux2 streamable=1 ! watchdog timeout={self.watchdog_timeout} ! {rtmp_output_element} sync=0 name=rtmpsink2{self.label} location=\"{self.rtmp_path2}\"
                 alsasrc device={AUDIO_DEVICE} ! audioresample ! audio/x-raw,rate=48000 ! voaacenc bitrate=96000 ! audio/mpeg ! aacparse ! audio/mpeg, mpegversion=4 ! tee name=audiotee ! queue ! mux.
                 audiotee. !  queue ! mux2. 
@@ -212,9 +248,27 @@ class output_connector():
             sink.connect('format-location', self.format_location_callback2)
 
         self.pipeline.set_state(Gst.State.PLAYING)
-        if self.active_camera:
-            time.sleep(3)
-            self.connect_to_source(cameras[self.active_camera])
+        self.modify_settings(self.settings1, self.settings2)
+
+    def modify_settings(self, settings1, settings2):
+        print(f'Using new settings for camera1: {settings1} and camera2: {settings2}')
+        encoder1 = self.pipeline.get_by_name('encoder1')
+        encoder1.set_property('bps', settings1['bitrate'])
+        encoder1.set_property('bps-max', settings1['bitrate']+1000000)
+        encoder2 = self.pipeline.get_by_name('encoder2')
+        encoder2.set_property('bps', settings2['bitrate'])
+        encoder2.set_property('bps-max', settings2['bitrate']+1000000)
+
+        disable_auto_white_balance_cmd1 = f'v4l2-ctl --device {self.device1} -c white_balance_temperature_auto=0'
+        disable_auto_white_balance1 = subprocess.run(["bash", "-c", disable_auto_white_balance_cmd1], stdout=subprocess.PIPE)
+        set_white_balance_cmd1 = f'v4l2-ctl --device {self.device1} -c white_balance_temperature={settings1["white_balance"]}'
+        set_white_balance1 = subprocess.run(["bash", "-c", set_white_balance_cmd1], stdout=subprocess.PIPE)
+
+        disable_auto_white_balance_cmd2 = f'v4l2-ctl --device {self.device2} -c white_balance_temperature_auto=0'
+        disable_auto_white_balance2 = subprocess.run(["bash", "-c", disable_auto_white_balance_cmd2], stdout=subprocess.PIPE)
+        set_white_balance_cmd2 = f'v4l2-ctl --device {self.device2} -c white_balance_temperature={settings2["white_balance"]}'
+        set_white_balance2 = subprocess.run(["bash", "-c", set_white_balance_cmd2], stdout=subprocess.PIPE)
+
 
     def format_location_callback1(self, splitmux, fragment_id):
         now = datetime.now()
@@ -230,16 +284,6 @@ class output_connector():
 
     def get_label(self):
         return self.label
-
-    def connect_to_source(self, source):
-        print(f'Connecting camera {source} to output "{self.label}"')
-        #caps = source.get_caps()
-        #print_caps(caps, source.get_label())
-        self.active_camera=source
-
-
-    def disconnect_from_source(self):
-        self.active_camera = None
 
     def eos_callback(self, bus, msg):
         print(f'EOS in RTMP pipeline "{self.pipeline}"')
@@ -310,7 +354,6 @@ class output_connector():
     def __del__(self):
         print(f'Destructor of output connector "{self.label}" class')
         if self.pipeline:
-            self.disconnect_from_source()
             self.pipeline.send_event(Gst.Event.new_eos())
             time.sleep(1)
 
@@ -321,6 +364,9 @@ class output_connector():
 
 def main(args):
     global l_devices, d_counter
+    global current_settings1, current_settings2
+    global output
+    global serial
 
     Gst.init(None)
 
@@ -333,14 +379,9 @@ def main(args):
 
     l_devices, d_counter = get_usb_devices()
 
-    data = {
-        "serial": serial
-    }
-    url = INTEGRATION_ENDPOINT
-
     if not DO_LOCAL_OUTPUT:
         try:
-            req3 = requests.post(url, data=data)
+            req3 = requests.post(INTEGRATION_ENDPOINT, data={"serial": serial})
 
             print(f'Received: {req3}')
             req_data = req3.json()
@@ -351,6 +392,8 @@ def main(args):
             streaming_address2 = endpoint2 + key2
             print(f'Streaming to endpoints: {streaming_address1}, {streaming_address2}')
             print(f'Playback URL: {playbackUrl1}, {playbackUrl2}')
+            settings1 = {'bitrate': req_data['data']['channels'][0]['bitrate']*1000, 'white_balance': req_data['data']['channels'][0]['whiteBalance']}
+            settings2 = {'bitrate': req_data['data']['channels'][1]['bitrate']*1000, 'white_balance': req_data['data']['channels'][1]['whiteBalance']}
         except:
             print(f'Error occured during API call')
             return 1
@@ -358,16 +401,22 @@ def main(args):
         streaming_address1 = LOCAL_ENDPOINT1
         streaming_address2 = LOCAL_ENDPOINT2
         print(f'Streaming to endpoints: {streaming_address1}, {streaming_address2}')
+        settings1 = {'bitrate': BITRATE, 'white_balance': 6500}
+        settings2 = {'bitrate': BITRATE, 'white_balance': 6500}
+
+    current_settings1 = settings1
+    current_settings2 = settings2
 
     if AUTO_DETECT_USB_PORTS and (d_counter >= 2):
-        output=output_connector('output', VIDEO_FOLDER, streaming_address1, streaming_address2, l_devices[0], l_devices[1])
+        output=output_connector('output', VIDEO_FOLDER, streaming_address1, streaming_address2, l_devices[0], l_devices[1], current_settings1, current_settings2)
     elif AUTO_DETECT_USB_PORTS and (d_counter >= 1):
-        output = output_connector('output', VIDEO_FOLDER, streaming_address1, streaming_address2, l_devices[0], None)
+        output = output_connector('output', VIDEO_FOLDER, streaming_address1, streaming_address2, l_devices[0], None, current_settings1, current_settings2)
     else:
-        output=output_connector('output', VIDEO_FOLDER, streaming_address1, streaming_address2, VIDEO_DEVICE1, VIDEO_DEVICE2)
+        output=output_connector('output', VIDEO_FOLDER, streaming_address1, streaming_address2, VIDEO_DEVICE1, VIDEO_DEVICE2, current_settings1, current_settings2)
 
     GLib.timeout_add_seconds(CHECK_FILES_EVERY, cb_timeout, None)
     GLib.timeout_add_seconds(CHECK_USB_EVERY, cb_check_usb, None)
+    GLib.timeout_add_seconds(CHECK_SETTINGS_EVERY, cb_check_settings, None)
 
     output.run_pipeline()
 
