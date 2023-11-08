@@ -35,10 +35,10 @@ Follow the steps below to set up Bond Cam on your Single Board Computer (SBC).
 
 5. **Copy the service file and start the Bond Cam service**:
     ```bash
-    sudo cp bondcam_streaming.service /etc/systemd/system/
+    sudo ln -s /home/nifty/Projects/bondcam_streaming/bondcam_streaming.service /etc/systemd/system/bondcam_streaming.service
     sudo systemctl enable bondcam_streaming
     sudo systemctl start bondcam_streaming
-    sudo cp bondcam_startup.service /etc/systemd/system/
+    sudo ln -s /home/nifty/Projects/bondcam_streaming/bondcam_startup.service /etc/systemd/system/bondcam_startup.service
     sudo systemctl enable bondcam_startup.service
     sudo systemctl start bondcam_startup.service
     ```
