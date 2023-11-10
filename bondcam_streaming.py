@@ -28,6 +28,9 @@ LOCAL_ENDPOINT2 = os.environ["LOCAL_ENDPOINT2"]
 AUTO_DETECT_USB_PORTS = int(os.environ["AUTO_DETECT_USB_PORTS"])
 CHECK_USB_EVERY = int(os.environ["CHECK_USB_EVERY"])#seconds - check usb cameras
 CHECK_SETTINGS_EVERY = int(os.environ["CHECK_SETTINGS_EVERY"])#seconds - check settings for cameras by API
+SKIP_CAMERAS_VALUE = int(os.environ["SKIP_CAMERAS_VALUE"])
+AUTO_DETECT_AUDIO = int(os.environ["AUTO_DETECT_AUDIO"])
+SKIP_AUDIO_VALUE = int(os.environ["SKIP_AUDIO_VALUE"])
 
 os.environ["GST_DEBUG"] = '2,flvmux:1'
 
@@ -84,8 +87,10 @@ def get_usb_devices():
             d_address = d.split('\n\t')[1]
             l_devices.append(d_address)
             print(f'Found device #{d_counter}: address {d_address} name {d_name}')
+    #rejecting first several devices in system
+    d_counter-=SKIP_CAMERAS_VALUE
     if d_counter > 2:
-        print(f'More than 2 cameras found, we would use first 2')
+        print(f'More than 2 cameras found, we would use last 2')
     elif d_counter == 2:
         print(f'All 2 cameras found automatically')
     elif d_counter == 0:
@@ -93,6 +98,30 @@ def get_usb_devices():
     elif d_counter == 1:
         print('Only 1 camera found')
     return l_devices, d_counter
+
+def get_audio_devices():
+    cmd_devices = """aplay -l | grep card"""
+    devicesstr = subprocess.run(["bash", "-c", cmd_devices], stdout=subprocess.PIPE)
+    devices = devicesstr.stdout.decode('utf-8')
+    d_counter = 0
+    l_devices = []
+    for d in devices.split('\n'):
+        if len(d) > 0:
+            d_counter += 1
+            d_name = ' '.join(d.split(':')[1:])
+            d_address = f"hw:{d.split(':')[0].split(' ')[-1]},0"
+            l_devices.append(d_address)
+            print(f'Found device #{d_counter}: address {d_address} description {d_name}')
+    #rejecting first several devices in system
+    d_counter-=SKIP_AUDIO_VALUE
+    if d_counter > 1:
+        print(f'More than 1 audios found, we would use the last one')
+    elif d_counter == 0:
+        print('Unable to find audio input, would use silence instead')
+    elif d_counter == 1:
+        print('The only audio found')
+    return l_devices, d_counter
+
 
 def compare_usb_devices(l_devices, d_counter, l_devices_new, d_counter_new):
     if (d_counter != d_counter_new) or (len(l_devices) != len(l_devices_new)):
@@ -193,6 +222,20 @@ class output_connector():
         elif self.device1 and self.device2 is None:
             self.num_devices = 1
 
+        if AUTO_DETECT_AUDIO:
+            l_audio_devices, d_audio_counter = get_audio_devices()
+            if d_audio_counter >=1:
+                self.with_audio = True
+                self.audio_device = l_audio_devices[-1]
+            else:
+                self.with_audio = False
+        else:
+            if len(AUDIO_DEVICE) == 0:
+                self.with_audio = False
+            else:
+                self.with_audio = True
+                self.audio_device = AUDIO_DEVICE
+
         self.pipeline=None
         self.launch_pipeline()
 
@@ -206,6 +249,11 @@ class output_connector():
         rtmp_output_element = 'rtmpsink' if DO_LOCAL_OUTPUT else 'rtmp2sink'
 
         print(f'==================Creating a new pipeline=====================\n')
+        if self.with_audio:
+            audio_input = f'alsasrc device={AUDIO_DEVICE} ! audioresample ! audio/x-raw,rate=48000 ! voaacenc bitrate=96000 ! audio/mpeg ! aacparse ! audio/mpeg, mpegversion=4'
+        else:
+            audio_input = f'audiotestsrc is-live=1 wave=silence ! audioresample ! audio/x-raw,rate=48000 ! voaacenc bitrate=96000 ! audio/mpeg ! aacparse ! audio/mpeg, mpegversion=4'
+
         if self.num_devices == 2:
             gcommand = f"""v4l2src do-timestamp=1 device={self.device1} ! image/jpeg,framerate={VIDEO_FRAMERATE1}/1,width=1920,height=1080 ! queue ! mppjpegdec ! videoconvert !  
                 mpph264enc name=encoder1 profile=main qos=1 header-mode=1 profile=main bps={BITRATE} bps-max={BITRATE+1000000} rc-mode=vbr ! video/x-h264,level=(string)4 ! h264parse config-interval=1 ! tee name=tee1_{self.label} ! 
@@ -213,7 +261,7 @@ class output_connector():
                 v4l2src do-timestamp=1 device={self.device2} ! image/jpeg,framerate={VIDEO_FRAMERATE2}/1,width=1920,height=1080 ! queue ! mppjpegdec ! videoconvert !  
                 mpph264enc name=encoder2 profile=main qos=1 header-mode=1 profile=main bps={BITRATE} bps-max={BITRATE+1000000} rc-mode=vbr ! video/x-h264,level=(string)4 ! h264parse config-interval=1 ! tee name=tee2_{self.label} ! 
                 queue ! flvmux name=mux2 streamable=1 ! watchdog timeout={self.watchdog_timeout} ! {rtmp_output_element} sync=0 name=rtmpsink2{self.label} location=\"{self.rtmp_path2}\"
-                alsasrc device={AUDIO_DEVICE} ! audioresample ! audio/x-raw,rate=48000 ! voaacenc bitrate=96000 ! audio/mpeg ! aacparse ! audio/mpeg, mpegversion=4 ! tee name=audiotee ! queue ! mux.
+                {audio_input} ! tee name=audiotee ! queue ! mux.
                 audiotee. !  queue ! mux2. 
                 tee1_{self.label}. ! queue !  
                 splitmuxsink name=splitmuxsink1{self.label} async-handling=1 message-forward=1 max-size-time={self.video_duration * 60 * 1000000000} location={self.save_path}start1_{self.label}.mp4
@@ -221,9 +269,9 @@ class output_connector():
                 splitmuxsink name=splitmuxsink2{self.label} async-handling=1 message-forward=1 max-size-time={self.video_duration * 60 * 1000000000} location={self.save_path}start2_{self.label}.mp4"""
         elif self.num_devices == 1:
             gcommand = f"""v4l2src do-timestamp=1 device={self.device1} ! image/jpeg,framerate={VIDEO_FRAMERATE1}/1,width=1920,height=1080 ! queue ! mppjpegdec ! videoconvert !  
-                mpph264enc profile=main qos=1 header-mode=1 profile=main bps={BITRATE} bps-max={BITRATE+1000000} rc-mode=vbr ! video/x-h264,level=(string)4 ! h264parse config-interval=1 ! tee name=tee1_{self.label} ! 
+                mpph264enc name=encoder1 profile=main qos=1 header-mode=1 profile=main bps={BITRATE} bps-max={BITRATE+1000000} rc-mode=vbr ! video/x-h264,level=(string)4 ! h264parse config-interval=1 ! tee name=tee1_{self.label} ! 
                 queue ! flvmux name=mux streamable=1 ! watchdog timeout={self.watchdog_timeout} ! {rtmp_output_element} sync=0 name=rtmpsink1{self.label} location=\"{self.rtmp_path1}\"
-                alsasrc device={AUDIO_DEVICE} ! audioresample ! audio/x-raw,rate=48000 ! voaacenc bitrate=96000 ! audio/mpeg ! aacparse ! audio/mpeg, mpegversion=4 ! tee name=audiotee ! queue ! mux.
+                {audio_input} ! tee name=audiotee ! queue ! mux.
                 tee1_{self.label}. ! queue !  
                 splitmuxsink name=splitmuxsink1{self.label} async-handling=1 message-forward=1 max-size-time={self.video_duration * 60 * 1000000000} location={self.save_path}start1_{self.label}.mp4"""
 
@@ -252,22 +300,24 @@ class output_connector():
 
     def modify_settings(self, settings1, settings2):
         print(f'Using new settings for camera1: {settings1} and camera2: {settings2}')
-        encoder1 = self.pipeline.get_by_name('encoder1')
-        encoder1.set_property('bps', settings1['bitrate'])
-        encoder1.set_property('bps-max', settings1['bitrate']+1000000)
-        encoder2 = self.pipeline.get_by_name('encoder2')
-        encoder2.set_property('bps', settings2['bitrate'])
-        encoder2.set_property('bps-max', settings2['bitrate']+1000000)
+        if self.device1:
+            encoder1 = self.pipeline.get_by_name('encoder1')
+            encoder1.set_property('bps', settings1['bitrate'])
+            encoder1.set_property('bps-max', settings1['bitrate']+1000000)
+            disable_auto_white_balance_cmd1 = f'v4l2-ctl --device {self.device1} -c white_balance_temperature_auto=0'
+            disable_auto_white_balance1 = subprocess.run(["bash", "-c", disable_auto_white_balance_cmd1], stdout=subprocess.PIPE)
+            set_white_balance_cmd1 = f'v4l2-ctl --device {self.device1} -c white_balance_temperature={settings1["white_balance"]}'
+            set_white_balance1 = subprocess.run(["bash", "-c", set_white_balance_cmd1], stdout=subprocess.PIPE)
+        if self.device2:
+            encoder2 = self.pipeline.get_by_name('encoder2')
+            encoder2.set_property('bps', settings2['bitrate'])
+            encoder2.set_property('bps-max', settings2['bitrate']+1000000)
+            disable_auto_white_balance_cmd2 = f'v4l2-ctl --device {self.device2} -c white_balance_temperature_auto=0'
+            disable_auto_white_balance2 = subprocess.run(["bash", "-c", disable_auto_white_balance_cmd2], stdout=subprocess.PIPE)
+            set_white_balance_cmd2 = f'v4l2-ctl --device {self.device2} -c white_balance_temperature={settings2["white_balance"]}'
+            set_white_balance2 = subprocess.run(["bash", "-c", set_white_balance_cmd2], stdout=subprocess.PIPE)
 
-        disable_auto_white_balance_cmd1 = f'v4l2-ctl --device {self.device1} -c white_balance_temperature_auto=0'
-        disable_auto_white_balance1 = subprocess.run(["bash", "-c", disable_auto_white_balance_cmd1], stdout=subprocess.PIPE)
-        set_white_balance_cmd1 = f'v4l2-ctl --device {self.device1} -c white_balance_temperature={settings1["white_balance"]}'
-        set_white_balance1 = subprocess.run(["bash", "-c", set_white_balance_cmd1], stdout=subprocess.PIPE)
 
-        disable_auto_white_balance_cmd2 = f'v4l2-ctl --device {self.device2} -c white_balance_temperature_auto=0'
-        disable_auto_white_balance2 = subprocess.run(["bash", "-c", disable_auto_white_balance_cmd2], stdout=subprocess.PIPE)
-        set_white_balance_cmd2 = f'v4l2-ctl --device {self.device2} -c white_balance_temperature={settings2["white_balance"]}'
-        set_white_balance2 = subprocess.run(["bash", "-c", set_white_balance_cmd2], stdout=subprocess.PIPE)
 
 
     def format_location_callback1(self, splitmux, fragment_id):
@@ -408,9 +458,9 @@ def main(args):
     current_settings2 = settings2
 
     if AUTO_DETECT_USB_PORTS and (d_counter >= 2):
-        output=output_connector('output', VIDEO_FOLDER, streaming_address1, streaming_address2, l_devices[0], l_devices[1], current_settings1, current_settings2)
+        output=output_connector('output', VIDEO_FOLDER, streaming_address1, streaming_address2, l_devices[-2], l_devices[-1], current_settings1, current_settings2)
     elif AUTO_DETECT_USB_PORTS and (d_counter >= 1):
-        output = output_connector('output', VIDEO_FOLDER, streaming_address1, streaming_address2, l_devices[0], None, current_settings1, current_settings2)
+        output = output_connector('output', VIDEO_FOLDER, streaming_address1, streaming_address2, l_devices[-1], None, current_settings1, current_settings2)
     else:
         output=output_connector('output', VIDEO_FOLDER, streaming_address1, streaming_address2, VIDEO_DEVICE1, VIDEO_DEVICE2, current_settings1, current_settings2)
 
