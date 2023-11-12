@@ -250,7 +250,7 @@ class output_connector():
 
         print(f'==================Creating a new pipeline=====================\n')
         if self.with_audio:
-            audio_input = f'alsasrc device={AUDIO_DEVICE} ! audioresample ! audio/x-raw,rate=48000 ! voaacenc bitrate=96000 ! audio/mpeg ! aacparse ! audio/mpeg, mpegversion=4'
+            audio_input = f'alsasrc device={self.audio_device} ! audioresample ! audio/x-raw,rate=48000 ! voaacenc bitrate=96000 ! audio/mpeg ! aacparse ! audio/mpeg, mpegversion=4'
         else:
             audio_input = f'audiotestsrc is-live=1 wave=silence ! audioresample ! audio/x-raw,rate=48000 ! voaacenc bitrate=96000 ! audio/mpeg ! aacparse ! audio/mpeg, mpegversion=4'
 
