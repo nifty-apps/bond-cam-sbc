@@ -12,11 +12,12 @@ Follow the steps below to set up Bond Cam on your Single Board Computer (SBC).
 1. **Update the package list and install necessary tools:**
     ```bash
     sudo apt update && sudo apt install -y python3-pip git
+    sudo snap install ngrok
     ```
 
 2. **Install the `python-dotenv` library using `pip3`:**
     ```bash
-    pip3 install python-dotenv
+    pip3 install python-dotenv python-networkmanager
     ```
 
 3. **Clone the Bond Cam SBC repository:**
