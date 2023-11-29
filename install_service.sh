@@ -1,7 +1,7 @@
 sudo apt update
 sudo apt install -y python3-pip git
 sudo snap install ngrok
-pip3 install python-dotenv python-networkmanager
+pip3 install python-dotenv python-networkmanager pyngrok
 mkdir /home/nifty/Projects
 cd /home/nifty/Projects
 git clone https://bond-cam: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@github.com/nifty-apps/bond-cam-sbc.git /home/nifty/Projects/bondcam_streaming

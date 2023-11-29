@@ -17,7 +17,7 @@ Follow the steps below to set up Bond Cam on your Single Board Computer (SBC).
 
 2. **Install the `python-dotenv` library using `pip3`:**
     ```bash
-    pip3 install python-dotenv python-networkmanager
+    pip3 install python-dotenv python-networkmanager pyngrok
     ```
 
 3. **Clone the Bond Cam SBC repository:**
