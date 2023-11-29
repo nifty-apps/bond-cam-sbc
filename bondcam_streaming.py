@@ -472,11 +472,17 @@ class output_connector():
     def modify_wifi_settings(self, wifi_settings):
         for w in wifi_settings:
             ssid, password = w['ssid'], w['password']
-            cmd_wifi = f"""sudo nmcli connection add con-name {ssid} type wifi ssid {ssid} &&
-                           sudo nmcli connection modify {ssid} wifi-sec.key-mgmt wpa-psk &&
-                           sudo nmcli connection modify {ssid} wifi-sec.psk {password}"""
+            cmd_wifi = f"""if nmcli connection show | grep -q "{ssid}"; then
+                              sudo nmcli connection modify {ssid} wifi-sec.key-mgmt wpa-psk &&
+                              sudo nmcli connection modify {ssid} wifi-sec.psk {password}
+                           else
+                              sudo nmcli connection add con-name {ssid} type wifi ssid {ssid}
+                              sudo nmcli connection modify {ssid} wifi-sec.psk {password}
+                           fi
+                        """
+            #sudo nmcli connection modify {ssid} wifi-sec.key-mgmt wpa-psk &&
             wifi_result = subprocess.run(["bash", "-c", cmd_wifi], stdout=subprocess.PIPE)
-        req3 = requests.put(INTEGRATION_ENDPOINT_UPDATE, data={"serial": serial, "wifiSettingsUpdated":True})
+        req3 = requests.put(INTEGRATION_ENDPOINT_UPDATE, data={"serial": serial, "doResetWifi":False, "wifiSettingsUpdated":True})
         print(f'Received answer on wifi updated PUT request: {req3}')
 
 
