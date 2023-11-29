@@ -43,6 +43,13 @@ Follow the steps below to set up Bond Cam on your Single Board Computer (SBC).
     sudo systemctl enable bondcam_startup.service
     sudo systemctl start bondcam_startup.service
     ```
+6. **Set nmcli available to execute without root password**:
+    ```bash
+    sudo visudo
+    #Add to the end of file line:
+    nifty ALL=(ALL) NOPASSWD: /usr/bin/nmcli
+    #Save it with Ctrl+X and Choose Y
+    ```
 
 ---
 
