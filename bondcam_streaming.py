@@ -6,6 +6,7 @@ import time
 import requests
 import subprocess
 import re
+import traceback
 from dotenv import load_dotenv
 from pyngrok import ngrok
 import NetworkManager
@@ -191,7 +192,12 @@ def get_cameras_settings():
         wifi_settings = req_data['data']['device']['wifi_settings']
         do_renew_wifi = req_data['data']['device']['doResetWifi']
 
-    except:
+    except Exception as e:
+        exc_type, exc_obj, exc_tb = sys.exc_info()
+        fname = exc_tb.tb_frame.f_code.co_filename
+        line_num = exc_tb.tb_lineno
+        print(f"An error occurred in file '{fname}' at line {line_num}: {e}")
+        traceback.print_exc()
         settings1, settings2, global_settings, wifi_settings, do_renew_wifi = current_settings1, current_settings2, current_global_settings, current_wifi_settings, False
     return settings1, settings2, global_settings, wifi_settings, do_renew_wifi
 
@@ -642,8 +648,12 @@ def main(args):
                 if ngrok_tunnel.is_ssh_launched and not global_settings['enable_ssh']:
                     ngrok_tunnel.interrupt_ngrok()
 
-            except:
-                print(f'Error occured during API call')
+            except Exception as e:
+                exc_type, exc_obj, exc_tb = sys.exc_info()
+                fname = exc_tb.tb_frame.f_code.co_filename
+                line_num = exc_tb.tb_lineno
+                print(f"An error occurred in file '{fname}' at line {line_num}: {e}")
+                traceback.print_exc()
                 return 1
         else:
             channelsProvided = True
