@@ -610,12 +610,16 @@ def main(args):
                 print(f'Received: {req3}')
                 req_data = req3.json()
                 #print(f'Json received: {req_data}')
-                endpoint1, key1, playbackUrl1 = req_data['data']['channels'][0]['ingestEndpoint'], req_data['data']['channels'][0]['streamKey'], req_data['data']['channels'][0]['playbackUrl']
-                endpoint2, key2, playbackUrl2 = req_data['data']['channels'][1]['ingestEndpoint'], req_data['data']['channels'][1]['streamKey'], req_data['data']['channels'][1]['playbackUrl']
-                streaming_address1 = endpoint1 + key1
-                streaming_address2 = endpoint2 + key2
-                settings1 = {'bitrate': req_data['data']['channels'][0]['bitrate']*1000, 'white_balance': req_data['data']['channels'][0]['whiteBalance']}
-                settings2 = {'bitrate': req_data['data']['channels'][1]['bitrate']*1000, 'white_balance': req_data['data']['channels'][1]['whiteBalance']}
+                if req_data['data']['channels'] == []:
+                    channelsProvided = False
+                else:
+                    channelsProvided = True
+                    endpoint1, key1, playbackUrl1 = req_data['data']['channels'][0]['ingestEndpoint'], req_data['data']['channels'][0]['streamKey'], req_data['data']['channels'][0]['playbackUrl']
+                    endpoint2, key2, playbackUrl2 = req_data['data']['channels'][1]['ingestEndpoint'], req_data['data']['channels'][1]['streamKey'], req_data['data']['channels'][1]['playbackUrl']
+                    streaming_address1 = endpoint1 + key1
+                    streaming_address2 = endpoint2 + key2
+                    settings1 = {'bitrate': req_data['data']['channels'][0]['bitrate']*1000, 'white_balance': req_data['data']['channels'][0]['whiteBalance']}
+                    settings2 = {'bitrate': req_data['data']['channels'][1]['bitrate']*1000, 'white_balance': req_data['data']['channels'][1]['whiteBalance']}
                 skip_audio_val_parameter = req_data['data']['device']['settings']['skip_audio_value']
                 if skip_audio_val_parameter < 0:
                     skip_audio_val_parameter = 0
@@ -642,6 +646,7 @@ def main(args):
                 print(f'Error occured during API call')
                 return 1
         else:
+            channelsProvided = True
             streaming_address1 = LOCAL_ENDPOINT1
             streaming_address2 = LOCAL_ENDPOINT2
             settings1 = {'bitrate': BITRATE, 'white_balance': 6500}
@@ -652,7 +657,7 @@ def main(args):
                                'video_output': VIDEO_FOLDER,
                                'is_reserve': False}
         time.sleep(10)
-        wait_for_streaming = global_settings['is_reserve']
+        wait_for_streaming = global_settings['is_reserve'] or not channelsProvided
 
     print("We're asked to stream, launching it")
 
