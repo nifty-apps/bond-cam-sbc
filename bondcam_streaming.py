@@ -6,7 +6,18 @@ import time
 import requests
 import subprocess
 import re
+import traceback
 from dotenv import load_dotenv
+from pyngrok import ngrok
+import NetworkManager
+from dbus import SystemBus, Interface
+#from dbus.types import Dictionary, String, Array, ByteArray, Byte
+
+interface_netman = "org.freedesktop.NetworkManager"
+path_netman_settings = "/org/freedesktop/NetworkManager/Settings"
+
+interface_settings = "org.freedesktop.NetworkManager.Settings"
+interface_connection = "org.freedesktop.NetworkManager.Settings.Connection"
 
 load_dotenv()
 
@@ -21,6 +32,7 @@ VIDEO_FRAMERATE1 = int(os.environ["VIDEO_FRAMERATE1"])
 VIDEO_FRAMERATE2 = int(os.environ["VIDEO_FRAMERATE2"])
 VIDEO_KEEP_HOURS = int(os.environ["VIDEO_KEEP_HOURS"])
 INTEGRATION_ENDPOINT = os.environ["INTEGRATION_ENDPOINT"]
+INTEGRATION_ENDPOINT_UPDATE = os.environ["INTEGRATION_ENDPOINT_UPDATE"]
 CHECK_FILES_EVERY = int(os.environ["CHECK_FILES_EVERY"])#seconds - check and remove old files
 DO_LOCAL_OUTPUT = int(os.environ["DO_LOCAL_OUTPUT"])
 LOCAL_ENDPOINT1 = os.environ["LOCAL_ENDPOINT1"]
@@ -43,8 +55,12 @@ l_devices = None
 d_counter = None
 current_settings1 = None
 current_settings2 = None
+current_global_settings = None
+current_wifi_settings = None
 output = None
 serial = None
+skip_audio_val=0
+skip_cameras_val=0
 
 def remove_old_files(folder, extension, hours_delta):
     now = datetime.now()
@@ -66,7 +82,7 @@ def remove_old_files(folder, extension, hours_delta):
 def cb_timeout(b):
     try:
         print('Started removing old files job')
-        num_removed=remove_old_files(VIDEO_FOLDER, 'mp4', VIDEO_KEEP_HOURS)
+        num_removed=remove_old_files(current_global_settings['video_folder'], 'mp4', VIDEO_KEEP_HOURS)
         print(f'Finished removing old files job, total {num_removed} files was removed')
     except Exception as ex:
         print(f'Exception at callback {str(ex)}')
@@ -135,7 +151,7 @@ def compare_usb_devices(l_devices, d_counter, l_devices_new, d_counter_new):
 
 def cb_check_usb(b):
     try:
-        #print('Performing USB check')
+        print('Callback: performing USB check')
         l_devices_new, d_counter_new = get_usb_devices()
         if not compare_usb_devices(l_devices, d_counter, l_devices_new, d_counter_new):
             print('Connected USB cameras configuration changed. Relaunching script')
@@ -151,20 +167,45 @@ def cb_check_usb(b):
 def get_cameras_settings():
     try:
         req3 = requests.post(INTEGRATION_ENDPOINT, data={"serial": serial})
+        print(f'Received: {req3}')
         req_data = req3.json()
+        #print(f"ssh={req_data['data']['device']['enable_ssh']}")
         settings1 = {'bitrate': req_data['data']['channels'][0]['bitrate'] * 1000,
                      'white_balance': req_data['data']['channels'][0]['whiteBalance']}
         settings2 = {'bitrate': req_data['data']['channels'][1]['bitrate'] * 1000,
                      'white_balance': req_data['data']['channels'][1]['whiteBalance']}
-    except:
-        settings1, settings2 = current_settings1, current_settings2
-    return settings1, settings2
+        skip_audio_val_parameter = req_data['data']['device']['settings']['skip_audio_value']
+        if skip_audio_val_parameter < 0:
+            skip_audio_val_parameter = 0
+        if 'skip_cameras_val' in req_data['data']['device']['settings'].keys():
+            skip_cameras_val_parameter = req_data['data']['device']['settings']['skip_cameras_val']
+        else:
+            skip_cameras_val_parameter = SKIP_CAMERAS_VALUE
+        if skip_cameras_val_parameter < 0:
+            skip_cameras_val_parameter = 0
+        global_settings = {'enable_ssh': req_data['data']['device']['enable_ssh'],
+                           'ngrok_authtoken': req_data['data']['device']['ngrokId'],
+                           'skip_audio_val': skip_audio_val_parameter,
+                           'skip_cameras_val': skip_cameras_val_parameter,
+                           'video_output': req_data['data']['device']['settings']['video_output'],
+                           'is_reserve': req_data['data']['device']['is_reserve']}
+        wifi_settings = req_data['data']['device']['wifi_settings']
+        do_renew_wifi = req_data['data']['device']['doResetWifi']
+
+    except Exception as e:
+        exc_type, exc_obj, exc_tb = sys.exc_info()
+        fname = exc_tb.tb_frame.f_code.co_filename
+        line_num = exc_tb.tb_lineno
+        print(f"An error occurred in file '{fname}' at line {line_num}: {e}")
+        traceback.print_exc()
+        settings1, settings2, global_settings, wifi_settings, do_renew_wifi = current_settings1, current_settings2, current_global_settings, current_wifi_settings, False
+    return settings1, settings2, global_settings, wifi_settings, do_renew_wifi
 
 def cb_check_settings(b):
-    global current_settings1, current_settings2
+    global current_settings1, current_settings2, current_global_settings, current_wifi_settings
     try:
-        #print('Performing USB check')
-        settings1, settings2 = get_cameras_settings()
+        print('Callback: performing check of settings')
+        settings1, settings2, global_settings, wifi_settings, do_renew_wifi = get_cameras_settings()
         if (len(set(current_settings1.items()) ^ set(settings1.items())) > 0) or (len(set(current_settings2.items()) ^ set(settings2.items())) > 0) :
             print('Camera settings changed. Adjusting')
             output.modify_settings(settings1, settings2)
@@ -173,6 +214,23 @@ def cb_check_settings(b):
         else:
             pass
             #print('No changes of settings observed')
+        #print(set(current_global_settings.items()) ^ set(global_settings.items()))
+        #print(set(current_global_settings.items()))
+        #print(set(global_settings.items()))
+        if len(set(current_global_settings.items()) ^ set(global_settings.items())) > 0:
+            print('Device settings changed. Adjusting')
+            output.modify_device_settings(global_settings)
+            current_global_settings = global_settings
+        else:
+            pass
+            # print('No changes of settings observed')
+        if do_renew_wifi:
+            print('Device wifi settings asked to be changed. Adjusting')
+            output.modify_wifi_settings(wifi_settings)
+            current_wifi_settings = wifi_settings
+        else:
+            pass
+            # print('No changes of settings observed')
     except Exception as ex:
         print(f'Exception at settings check callback: {str(ex)}')
         return True
@@ -199,12 +257,82 @@ def remove_pipeline(pipeline, label):
     time.sleep(0.5)
     print(f'Removed pipeline "{label}"')
 
+def list_all_connections():
+    bus = SystemBus()
+    settings_proxy = bus.get_object(interface_netman, path_netman_settings)
+    settings = Interface(settings_proxy, interface_settings)
+    connections = settings.ListConnections()
+    # connections = NetworkManager.Settings.ListConnections()
+    for connection in connections:
+        this_connection = bus.get_object(interface_netman, connection)
+        this_connection_interface = Interface(this_connection, interface_connection)
+        settings = this_connection_interface.GetSettings()
+        connection_uuid = settings['connection']['uuid']
+        connection_type = settings['connection']['type']
+        #connection_type = settings['connection']['priority']
+        print(f"Connection UUID: {connection_uuid}, Type: {connection_type}")
+def set_networks_priorities(connection_type, priority):
+    bus = SystemBus()
+    settings_proxy = bus.get_object(interface_netman, path_netman_settings)
+    settings = Interface(settings_proxy, interface_settings)
+    connections = settings.ListConnections()
+    # connections = NetworkManager.Settings.ListConnections()
+    for connection in connections:
+        this_connection = bus.get_object(interface_netman, connection)
+        this_connection_interface = Interface(this_connection, interface_connection)
+        settings = this_connection_interface.GetSettings()
+        if settings['connection']['type'] == connection_type:
+            connection.SetAutoconnectPriority(priority)
+
+
+class NgrokTunnel():
+    def __init__(self):
+        self.is_ssh_launched = False
+        self.ssh_tunnel = None
+
+    def launch_ngrok(self, authtoken):
+        print(f'Launching ngrok ssh tunnel')
+        ngrok.set_auth_token(authtoken)
+        self.ssh_tunnel = ngrok.connect("22", "tcp")
+        l = self.ssh_tunnel.public_url[6:].split(':')
+        self.is_ssh_launched = True
+        self.ssh_address = f'ssh nifty@{l[0]} -p {l[1]}'
+        req3 = requests.put(INTEGRATION_ENDPOINT_UPDATE, data={"serial": serial, "ssh_address": self.ssh_address})
+        print(f'Received answer on PUT request: {req3}')
+        print(f'Ngrok launched with ssh address: {self.ssh_address}')
+
+    def get_current_ngrok_tunnel(self):
+        if self.ssh_tunnel:
+            l = self.ssh_tunnel.public_url[6:].split(':')
+            return f'ssh nifty@{l[0]} -p {l[1]}'
+        else:
+            return ''
+
+    def check_and_update_tunnel(self):
+        new_address = self.get_current_ngrok_tunnel()
+        if self.ssh_address != new_address:
+            print('Updating ngrok tunnel address')
+            req3 = requests.put(INTEGRATION_ENDPOINT_UPDATE, data={"serial": serial, "ssh_address":new_address})
+            print(f'Received answer on PUT request: {req3}')
+            self.ssh_address = new_address
+
+    def interrupt_ngrok(self):
+        print(f'Interrupting ngrok ssh tunnel')
+        ngrok.kill()
+        self.is_ssh_launched = False
+        self.ssh_tunnel = None
+        self.ssh_address = ''
+        req3 = requests.put(INTEGRATION_ENDPOINT_UPDATE, data={"serial": serial, "ssh_address": 'Ssh tunnel not active'})
+        print(f'Received answer on PUT request: {req3}')
+        return 'Ssh tunnel not active'
+
+
 class output_connector():
-    def __init__(self, label, save_path, rtmp_path1, rtmp_path2, device1, device2, settings1, settings2):
+    def __init__(self, label, rtmp_path1, rtmp_path2, device1, device2, settings1, settings2, global_settings):
         print(f'Init output_connector "{label}" class')
         self.pipeline=None
         self.label=label
-        self.save_path=save_path
+        self.save_path=global_settings['video_output']
         self.bitrate=BITRATE
         self.watchdog_timeout=OUTPUT_WATCHDOG_TIMEOUT
         self.rtmp_path1=rtmp_path1
@@ -216,6 +344,8 @@ class output_connector():
         self.device2 = device2
         self.settings1 = settings1
         self.settings2 = settings2
+        self.global_settings = global_settings
+        self.ngrok_tunnel = NgrokTunnel()
 
         if self.device1 and self.device2:
             self.num_devices = 2
@@ -250,7 +380,7 @@ class output_connector():
 
         print(f'==================Creating a new pipeline=====================\n')
         if self.with_audio:
-            audio_input = f'alsasrc device={AUDIO_DEVICE} ! audioresample ! audio/x-raw,rate=48000 ! voaacenc bitrate=96000 ! audio/mpeg ! aacparse ! audio/mpeg, mpegversion=4'
+            audio_input = f'alsasrc device={self.audio_device} ! audioresample ! audio/x-raw,rate=48000 ! voaacenc bitrate=96000 ! audio/mpeg ! aacparse ! audio/mpeg, mpegversion=4'
         else:
             audio_input = f'audiotestsrc is-live=1 wave=silence ! audioresample ! audio/x-raw,rate=48000 ! voaacenc bitrate=96000 ! audio/mpeg ! aacparse ! audio/mpeg, mpegversion=4'
 
@@ -297,6 +427,7 @@ class output_connector():
 
         self.pipeline.set_state(Gst.State.PLAYING)
         self.modify_settings(self.settings1, self.settings2)
+        self.modify_device_settings(self.global_settings)
 
     def modify_settings(self, settings1, settings2):
         print(f'Using new settings for camera1: {settings1} and camera2: {settings2}')
@@ -308,6 +439,7 @@ class output_connector():
             disable_auto_white_balance1 = subprocess.run(["bash", "-c", disable_auto_white_balance_cmd1], stdout=subprocess.PIPE)
             set_white_balance_cmd1 = f'v4l2-ctl --device {self.device1} -c white_balance_temperature={settings1["white_balance"]}'
             set_white_balance1 = subprocess.run(["bash", "-c", set_white_balance_cmd1], stdout=subprocess.PIPE)
+        self.settings1 = settings1
         if self.device2:
             encoder2 = self.pipeline.get_by_name('encoder2')
             encoder2.set_property('bps', settings2['bitrate'])
@@ -316,8 +448,48 @@ class output_connector():
             disable_auto_white_balance2 = subprocess.run(["bash", "-c", disable_auto_white_balance_cmd2], stdout=subprocess.PIPE)
             set_white_balance_cmd2 = f'v4l2-ctl --device {self.device2} -c white_balance_temperature={settings2["white_balance"]}'
             set_white_balance2 = subprocess.run(["bash", "-c", set_white_balance_cmd2], stdout=subprocess.PIPE)
+        self.settings2 = settings2
 
+    def modify_device_settings(self, global_settings):
+        print(f'Using new global settings for device: {global_settings}')
 
+        #Process enable_ssh:
+        if global_settings['enable_ssh'] and not self.ngrok_tunnel.is_ssh_launched:
+            self.ngrok_tunnel.launch_ngrok(global_settings['ngrok_authtoken'])
+        elif not global_settings['enable_ssh'] and self.ngrok_tunnel.is_ssh_launched:
+            self.ngrok_tunnel.interrupt_ngrok()
+
+        #Process skip_audio_val:
+        #Process skip_cameras_val:
+        #Process video_output:
+        if ((self.global_settings['skip_audio_val'] != current_global_settings['skip_audio_val']) or
+           (self.global_settings['skip_cameras_val'] != current_global_settings['skip_cameras_val']) or
+           (self.global_settings['video_output'] != current_global_settings['video_output'])):
+            print('skip_audio_val or skip_cameras_val or video_output has been changed, relaunching to enable')
+            exit(4)
+
+        #Process is_reserve. When true, we don't need to stream anymore
+        if global_settings['is_reserve']:
+            print('is_reserved has been changed, relaunching to enable stand by mode')
+            exit(5)
+
+        self.global_settings = global_settings
+
+    def modify_wifi_settings(self, wifi_settings):
+        for w in wifi_settings:
+            ssid, password = w['ssid'], w['password']
+            cmd_wifi = f"""if nmcli connection show | grep -q "{ssid}"; then
+                              sudo nmcli connection modify {ssid} wifi-sec.key-mgmt wpa-psk &&
+                              sudo nmcli connection modify {ssid} wifi-sec.psk {password}
+                           else
+                              sudo nmcli connection add con-name {ssid} type wifi ssid {ssid}
+                              sudo nmcli connection modify {ssid} wifi-sec.psk {password}
+                           fi
+                        """
+            #sudo nmcli connection modify {ssid} wifi-sec.key-mgmt wpa-psk &&
+            wifi_result = subprocess.run(["bash", "-c", cmd_wifi], stdout=subprocess.PIPE)
+        req3 = requests.put(INTEGRATION_ENDPOINT_UPDATE, data={"serial": serial, "doResetWifi":False, "wifiSettingsUpdated":True})
+        print(f'Received answer on wifi updated PUT request: {req3}')
 
 
     def format_location_callback1(self, splitmux, fragment_id):
@@ -414,11 +586,10 @@ class output_connector():
 
 def main(args):
     global l_devices, d_counter
-    global current_settings1, current_settings2
+    global current_settings1, current_settings2, current_global_settings, current_wifi_settings
     global output
     global serial
 
-    Gst.init(None)
 
     cmd_cpuinfo = """cat /proc/cpuinfo | grep Serial"""
     cpuinfo = subprocess.run(["bash", "-c", cmd_cpuinfo], stdout=subprocess.PIPE)
@@ -427,42 +598,98 @@ def main(args):
 
     print(f'Cpu serial is {serial}')
 
-    l_devices, d_counter = get_usb_devices()
+    print('Configuring connection priorities for network connections discovered:')
+    list_all_connections()
+    set_networks_priorities('ethernet', 0)
+    set_networks_priorities('wifi', 10)
+    set_networks_priorities('gsm', 50)
+    set_networks_priorities('cdma', 50)
 
-    if not DO_LOCAL_OUTPUT:
-        try:
-            req3 = requests.post(INTEGRATION_ENDPOINT, data={"serial": serial})
+    Gst.init(None)
 
-            print(f'Received: {req3}')
-            req_data = req3.json()
-            print(f'Json received: {req_data}')
-            endpoint1, key1, playbackUrl1 = req_data['data']['channels'][0]['ingestEndpoint'], req_data['data']['channels'][0]['streamKey'], req_data['data']['channels'][0]['playbackUrl']
-            endpoint2, key2, playbackUrl2 = req_data['data']['channels'][1]['ingestEndpoint'], req_data['data']['channels'][1]['streamKey'], req_data['data']['channels'][1]['playbackUrl']
-            streaming_address1 = endpoint1 + key1
-            streaming_address2 = endpoint2 + key2
-            print(f'Streaming to endpoints: {streaming_address1}, {streaming_address2}')
-            print(f'Playback URL: {playbackUrl1}, {playbackUrl2}')
-            settings1 = {'bitrate': req_data['data']['channels'][0]['bitrate']*1000, 'white_balance': req_data['data']['channels'][0]['whiteBalance']}
-            settings2 = {'bitrate': req_data['data']['channels'][1]['bitrate']*1000, 'white_balance': req_data['data']['channels'][1]['whiteBalance']}
-        except:
-            print(f'Error occured during API call')
-            return 1
-    else:
-        streaming_address1 = LOCAL_ENDPOINT1
-        streaming_address2 = LOCAL_ENDPOINT2
-        print(f'Streaming to endpoints: {streaming_address1}, {streaming_address2}')
-        settings1 = {'bitrate': BITRATE, 'white_balance': 6500}
-        settings2 = {'bitrate': BITRATE, 'white_balance': 6500}
+    wait_for_streaming = True
+    ngrok_tunnel = NgrokTunnel()
+    while wait_for_streaming:
+        if not DO_LOCAL_OUTPUT:
+            try:
+                req3 = requests.post(INTEGRATION_ENDPOINT, data={"serial": serial})
+                print(f'Received: {req3}')
+                req_data = req3.json()
+                #print(f'Json received: {req_data}')
+                if req_data['data']['channels'] == []:
+                    channelsProvided = False
+                else:
+                    channelsProvided = True
+                    endpoint1, key1, playbackUrl1 = req_data['data']['channels'][0]['ingestEndpoint'], req_data['data']['channels'][0]['streamKey'], req_data['data']['channels'][0]['playbackUrl']
+                    endpoint2, key2, playbackUrl2 = req_data['data']['channels'][1]['ingestEndpoint'], req_data['data']['channels'][1]['streamKey'], req_data['data']['channels'][1]['playbackUrl']
+                    streaming_address1 = endpoint1 + key1
+                    streaming_address2 = endpoint2 + key2
+                    settings1 = {'bitrate': req_data['data']['channels'][0]['bitrate']*1000, 'white_balance': req_data['data']['channels'][0]['whiteBalance']}
+                    settings2 = {'bitrate': req_data['data']['channels'][1]['bitrate']*1000, 'white_balance': req_data['data']['channels'][1]['whiteBalance']}
+                skip_audio_val_parameter = req_data['data']['device']['settings']['skip_audio_value']
+                if skip_audio_val_parameter < 0:
+                    skip_audio_val_parameter = 0
+                if 'skip_cameras_val' in req_data['data']['device']['settings'].keys():
+                    skip_cameras_val_parameter = req_data['data']['device']['settings']['skip_cameras_val']
+                else:
+                    skip_cameras_val_parameter = SKIP_CAMERAS_VALUE
+                if skip_cameras_val_parameter < 0:
+                    skip_cameras_val_parameter = 0
+                global_settings = {'enable_ssh': req_data['data']['device']['enable_ssh'],
+                                   'ngrok_authtoken': req_data['data']['device']['ngrokId'],
+                                   'skip_audio_val': skip_audio_val_parameter,
+                                   'skip_cameras_val': skip_cameras_val_parameter,
+                                   'video_output': req_data['data']['device']['settings']['video_output'],
+                                   'is_reserve': req_data['data']['device']['is_reserve']}
+                wifi_settings = req_data['data']['device']['wifi_settings']
+
+                if not ngrok_tunnel.is_ssh_launched and global_settings['enable_ssh']:
+                    ngrok_tunnel.launch_ngrok(global_settings['ngrok_authtoken'])
+                if ngrok_tunnel.is_ssh_launched and not global_settings['enable_ssh']:
+                    ngrok_tunnel.interrupt_ngrok()
+
+            except Exception as e:
+                exc_type, exc_obj, exc_tb = sys.exc_info()
+                fname = exc_tb.tb_frame.f_code.co_filename
+                line_num = exc_tb.tb_lineno
+                print(f"An error occurred in file '{fname}' at line {line_num}: {e}")
+                traceback.print_exc()
+                return 1
+        else:
+            channelsProvided = True
+            streaming_address1 = LOCAL_ENDPOINT1
+            streaming_address2 = LOCAL_ENDPOINT2
+            settings1 = {'bitrate': BITRATE, 'white_balance': 6500}
+            settings2 = {'bitrate': BITRATE, 'white_balance': 6500}
+            global_settings = {'enable_ssh': False,
+                               'skip_audio_val': SKIP_AUDIO_VALUE,
+                               'skip_cameras_val': SKIP_CAMERAS_VALUE,
+                               'video_output': VIDEO_FOLDER,
+                               'is_reserve': False}
+        time.sleep(10)
+        wait_for_streaming = global_settings['is_reserve'] or not channelsProvided
+
+    print("We're asked to stream, launching it")
+
+    if ngrok_tunnel.is_ssh_launched:
+        ngrok_tunnel.interrupt_ngrok()
+
+    print(f'Streaming to endpoints: {streaming_address1}, {streaming_address2}')
+    print(f'Playback URL: {playbackUrl1}, {playbackUrl2}')
 
     current_settings1 = settings1
     current_settings2 = settings2
+    current_global_settings = global_settings
+    current_wifi_settings = wifi_settings
+
+    l_devices, d_counter = get_usb_devices()
 
     if AUTO_DETECT_USB_PORTS and (d_counter >= 2):
-        output=output_connector('output', VIDEO_FOLDER, streaming_address1, streaming_address2, l_devices[-2], l_devices[-1], current_settings1, current_settings2)
+        output=output_connector('output', streaming_address1, streaming_address2, l_devices[-2], l_devices[-1], current_settings1, current_settings2, current_global_settings)
     elif AUTO_DETECT_USB_PORTS and (d_counter >= 1):
-        output = output_connector('output', VIDEO_FOLDER, streaming_address1, streaming_address2, l_devices[-1], None, current_settings1, current_settings2)
+        output = output_connector('output', streaming_address1, streaming_address2, l_devices[-1], None, current_settings1, current_settings2, current_global_settings)
     else:
-        output=output_connector('output', VIDEO_FOLDER, streaming_address1, streaming_address2, VIDEO_DEVICE1, VIDEO_DEVICE2, current_settings1, current_settings2)
+        output=output_connector('output', streaming_address1, streaming_address2, VIDEO_DEVICE1, VIDEO_DEVICE2, current_settings1, current_settings2, current_global_settings)
 
     GLib.timeout_add_seconds(CHECK_FILES_EVERY, cb_timeout, None)
     GLib.timeout_add_seconds(CHECK_USB_EVERY, cb_check_usb, None)

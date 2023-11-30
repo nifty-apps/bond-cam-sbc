@@ -12,11 +12,12 @@ Follow the steps below to set up Bond Cam on your Single Board Computer (SBC).
 1. **Update the package list and install necessary tools:**
     ```bash
     sudo apt update && sudo apt install -y python3-pip git
+    sudo snap install ngrok
     ```
 
 2. **Install the `python-dotenv` library using `pip3`:**
     ```bash
-    pip3 install python-dotenv
+    pip3 install python-dotenv python-networkmanager pyngrok
     ```
 
 3. **Clone the Bond Cam SBC repository:**
@@ -41,6 +42,13 @@ Follow the steps below to set up Bond Cam on your Single Board Computer (SBC).
     sudo ln -s /home/nifty/Projects/bondcam_streaming/bondcam_startup.service /etc/systemd/system/bondcam_startup.service
     sudo systemctl enable bondcam_startup.service
     sudo systemctl start bondcam_startup.service
+    ```
+6. **Set nmcli available to execute without root password**:
+    ```bash
+    sudo visudo
+    #Add to the end of file line:
+    nifty ALL=(ALL) NOPASSWD: /usr/bin/nmcli
+    #Save it with Ctrl+X and Choose Y
     ```
 
 ---
