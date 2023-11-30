@@ -183,7 +183,7 @@ def get_cameras_settings():
         if skip_cameras_val_parameter < 0:
             skip_cameras_val_parameter = 0
         global_settings = {'enable_ssh': req_data['data']['device']['enable_ssh'],
-                           'ngrok_authtoken': req_data['data']['device']['ngrockId'],
+                           'ngrok_authtoken': req_data['data']['device']['ngrokId'],
                            'skip_audio_val': skip_audio_val_parameter,
                            'skip_cameras_val': skip_cameras_val_parameter,
                            'video_output': req_data['data']['device']['settings']['video_output'],
@@ -630,7 +630,7 @@ def main(args):
                 if skip_cameras_val_parameter < 0:
                     skip_cameras_val_parameter = 0
                 global_settings = {'enable_ssh': req_data['data']['device']['enable_ssh'],
-                                   'ngrok_authtoken': req_data['data']['device']['ngrockId'],
+                                   'ngrok_authtoken': req_data['data']['device']['ngrokId'],
                                    'skip_audio_val': skip_audio_val_parameter,
                                    'skip_cameras_val': skip_cameras_val_parameter,
                                    'video_output': req_data['data']['device']['settings']['video_output'],
