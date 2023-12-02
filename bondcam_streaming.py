@@ -188,7 +188,7 @@ def get_cameras_settings():
                            'skip_audio_val': skip_audio_val_parameter,
                            'skip_cameras_val': skip_cameras_val_parameter,
                            'video_output': req_data['data']['device']['settings']['video_output'],
-                           'is_reserve': req_data['data']['device']['is_reserve']}
+                           'is_reserve': not req_data['data']['device']['is_reserve']}
         wifi_settings = req_data['data']['device']['wifi_settings']
         do_renew_wifi = req_data['data']['device']['doResetWifi']
 
@@ -331,6 +331,8 @@ class output_connector():
     def __init__(self, label, rtmp_path1, rtmp_path2, device1, device2, settings1, settings2, global_settings):
         print(f'Init output_connector "{label}" class')
         self.pipeline=None
+        self.source_bin1 = None
+        self.source_bin2 = None
         self.label=label
         self.save_path=global_settings['video_output']
         self.bitrate=BITRATE
@@ -385,10 +387,14 @@ class output_connector():
             audio_input = f'audiotestsrc is-live=1 wave=silence ! audioresample ! audio/x-raw,rate=48000 ! voaacenc bitrate=96000 ! audio/mpeg ! aacparse ! audio/mpeg, mpegversion=4'
 
         if self.num_devices == 2:
-            gcommand = f"""v4l2src do-timestamp=1 device={self.device1} ! image/jpeg,framerate={VIDEO_FRAMERATE1}/1,width=1920,height=1080 ! queue ! mppjpegdec ! videoconvert !  
+            self.source_bin_str1 = f'v4l2src do-timestamp=1 device={self.device1} ! image/jpeg,framerate={VIDEO_FRAMERATE1}/1,width=1920,height=1080 ! queue ! mppjpegdec'
+            self.source_bin_str2 = f'v4l2src do-timestamp=1 device={self.device2} ! image/jpeg,framerate={VIDEO_FRAMERATE2}/1,width=1920,height=1080 ! queue ! mppjpegdec'
+            gcommand = f"""videotestsrc pattern=0 is-live=1 ! videoconvert ! video/x-raw,width=1920,height=1080,framerate={VIDEO_FRAMERATE1}/1 !  source_compositor1.sink_0    
+                compositor name=source_compositor1 ignore-inactive-pads=1 sink_0::alpha=1 sink_0::zorder=1 sink_1::alpha=1 sink_1::zorder=2 ! videoconvert !  
                 mpph264enc name=encoder1 profile=main qos=1 header-mode=1 profile=main bps={BITRATE} bps-max={BITRATE+1000000} rc-mode=vbr ! video/x-h264,level=(string)4 ! h264parse config-interval=1 ! tee name=tee1_{self.label} ! 
                 queue ! flvmux name=mux streamable=1 ! watchdog timeout={self.watchdog_timeout} ! {rtmp_output_element} sync=0 name=rtmpsink1{self.label} location=\"{self.rtmp_path1}\"
-                v4l2src do-timestamp=1 device={self.device2} ! image/jpeg,framerate={VIDEO_FRAMERATE2}/1,width=1920,height=1080 ! queue ! mppjpegdec ! videoconvert !  
+                 videotestsrc pattern=0 is-live=1 ! videoconvert ! video/x-raw,width=1920,height=1080,framerate={VIDEO_FRAMERATE2}/1 ! source_compositor2.sink_0 
+                compositor name=source_compositor2 ignore-inactive-pads=1 sink_0::alpha=1 sink_0::zorder=1 sink_1::alpha=1 sink_1::zorder=2 ! videoconvert !  
                 mpph264enc name=encoder2 profile=main qos=1 header-mode=1 profile=main bps={BITRATE} bps-max={BITRATE+1000000} rc-mode=vbr ! video/x-h264,level=(string)4 ! h264parse config-interval=1 ! tee name=tee2_{self.label} ! 
                 queue ! flvmux name=mux2 streamable=1 ! watchdog timeout={self.watchdog_timeout} ! {rtmp_output_element} sync=0 name=rtmpsink2{self.label} location=\"{self.rtmp_path2}\"
                 {audio_input} ! tee name=audiotee ! queue ! mux.
@@ -397,16 +403,48 @@ class output_connector():
                 splitmuxsink name=splitmuxsink1{self.label} async-handling=1 message-forward=1 max-size-time={self.video_duration * 60 * 1000000000} location={self.save_path}start1_{self.label}.mp4
                 tee2_{self.label}. ! queue !  
                 splitmuxsink name=splitmuxsink2{self.label} async-handling=1 message-forward=1 max-size-time={self.video_duration * 60 * 1000000000} location={self.save_path}start2_{self.label}.mp4"""
+            self.source_bin1 = Gst.parse_bin_from_description(self.source_bin_str1, True)
+            self.source_bin2 = Gst.parse_bin_from_description(self.source_bin_str2, True)
+
+
         elif self.num_devices == 1:
-            gcommand = f"""v4l2src do-timestamp=1 device={self.device1} ! image/jpeg,framerate={VIDEO_FRAMERATE1}/1,width=1920,height=1080 ! queue ! mppjpegdec ! videoconvert !  
+            #videotestsrc is-live=1 pattern=0 ! videoconvert ! video/x-raw,width=1920,height=1080,framerate={VIDEO_FRAMERATE1}/1 ! source_compositor1.sink_0
+            self.source_bin_str1 = f'v4l2src do-timestamp=1 device={self.device1} ! image/jpeg,framerate={VIDEO_FRAMERATE1}/1,width=1920,height=1080 ! queue ! mppjpegdec'
+            gcommand = f""" 
+                compositor background=black name=source_compositor1 ignore-inactive-pads=0 sink_0::xpos=0 sink_0::ypos=0 sink_0::width=1920 sink_0::height=1080 
+                sink_0::alpha=1 sink_0::zorder=1 ! videoconvert !  
                 mpph264enc name=encoder1 profile=main qos=1 header-mode=1 profile=main bps={BITRATE} bps-max={BITRATE+1000000} rc-mode=vbr ! video/x-h264,level=(string)4 ! h264parse config-interval=1 ! tee name=tee1_{self.label} ! 
                 queue ! flvmux name=mux streamable=1 ! watchdog timeout={self.watchdog_timeout} ! {rtmp_output_element} sync=0 name=rtmpsink1{self.label} location=\"{self.rtmp_path1}\"
                 {audio_input} ! tee name=audiotee ! queue ! mux.
                 tee1_{self.label}. ! queue !  
                 splitmuxsink name=splitmuxsink1{self.label} async-handling=1 message-forward=1 max-size-time={self.video_duration * 60 * 1000000000} location={self.save_path}start1_{self.label}.mp4"""
+            self.source_bin1 = Gst.parse_bin_from_description(self.source_bin_str1, True)
 
-        print(f'Gstreamer pipeline: {gcommand}\n')
+        #print(f'Gstreamer pipeline: {gcommand}\n')
         self.pipeline = Gst.parse_launch(gcommand)
+
+        if self.num_devices == 2:
+            self.compositor1 = self.pipeline.get_by_name('source_compositor1')
+            self.compositor2 = self.pipeline.get_by_name('source_compositor2')
+            pad1 = self.compositor1.get_request_pad('sink_0')
+            pad2 = self.compositor2.get_request_pad('sink_0')
+
+            self.pipeline.add(self.source_bin1)
+            self.pipeline.add(self.source_bin2)
+            self.source_bin1.sync_state_with_parent()
+            self.source_bin2.sync_state_with_parent()
+            src1 = self.source_bin1.get_static_pad('src')
+            src2 = self.source_bin2.get_static_pad('src')
+            src1.link(pad1)
+            src2.link(pad2)
+        else:
+            self.compositor1 = self.pipeline.get_by_name('source_compositor1')
+            pad1 = self.compositor1.get_request_pad('sink_0')
+
+            self.pipeline.add(self.source_bin1)
+            self.source_bin1.sync_state_with_parent()
+            src1 = self.source_bin1.get_static_pad('src')
+            src1.link(pad1)
 
         self.bus = self.pipeline.get_bus()
         self.bus.add_signal_watch()
@@ -428,6 +466,98 @@ class output_connector():
         self.pipeline.set_state(Gst.State.PLAYING)
         self.modify_settings(self.settings1, self.settings2)
         self.modify_device_settings(self.global_settings)
+
+
+    def connect_usbs(self):
+        if self.source_bin1 or self.source_bin2:
+            print("!!! Error: At least one of USB source bins wasn't destroyed")
+            self.disconnect_usbs()
+            time.sleep(0.5)
+        if self.num_devices == 2:
+            self.source_bin1 = Gst.parse_bin_from_description(self.source_bin_str1, True)
+            self.source_bin2 = Gst.parse_bin_from_description(self.source_bin_str2, True)
+            self.compositor1 = self.pipeline.get_by_name('source_compositor1')
+            self.compositor2 = self.pipeline.get_by_name('source_compositor2')
+            pad1 = self.compositor1.get_static_pad('sink_0')
+            pad2 = self.compositor2.get_static_pad('sink_0')
+
+            self.pipeline.add(self.source_bin1)
+            self.pipeline.add(self.source_bin2)
+            src1 = self.source_bin1.get_static_pad('src')
+            src2 = self.source_bin2.get_static_pad('src')
+            src1.link(pad1)
+            src2.link(pad2)
+            self.source_bin1.sync_state_with_parent()
+            self.source_bin2.sync_state_with_parent()
+            compositor1_sink_0 = self.compositor1.get_static_pad('sink_0')
+            #compositor1_sink_1 = self.compositor1.get_static_pad('sink_1')
+            compositor1_sink_0.set_property('alpha', 1)
+            #compositor1_sink_1.set_property('zorder', 2)
+
+            compositor2_sink_0 = self.compositor2.get_static_pad('sink_0')
+            #compositor2_sink_1 = self.compositor2.get_static_pad('sink_1')
+            compositor2_sink_0.set_property('alpha', 1)
+            #compositor2_sink_1.set_property('zorder', 2)
+
+        else:
+            self.source_bin1 = Gst.parse_bin_from_description(self.source_bin_str1, True)
+            self.compositor1 = self.pipeline.get_by_name('source_compositor1')
+            pad1 = self.compositor1.get_static_pad('sink_0')
+
+            self.pipeline.add(self.source_bin1)
+            src1 = self.source_bin1.get_static_pad('src')
+            src1.link(pad1)
+            self.source_bin1.sync_state_with_parent()
+
+            compositor1_sink_0 = self.compositor1.get_static_pad('sink_0')
+            #compositor1_sink_1 = self.compositor1.get_static_pad('sink_1')
+            compositor1_sink_0.set_property('alpha', 1)
+            #compositor1_sink_1.set_property('zorder', 2)
+
+        print('!!!!!!!!!!!!!!!!done')
+        return True
+
+    def disconnect_usbs(self):
+        if self.num_devices == 2:
+            compositor1_sink_0 = self.compositor1.get_static_pad('sink_0')
+            #compositor1_sink_1 = self.compositor1.get_static_pad('sink_1')
+            compositor1_sink_0.set_property('alpha', 0)
+            #compositor1_sink_1.set_property('zorder', 1)
+
+            compositor2_sink_0 = self.compositor2.get_static_pad('sink_0')
+            #compositor2_sink_1 = self.compositor2.get_static_pad('sink_1')
+            compositor2_sink_0.set_property('alpha', 0)
+            #compositor2_sink_1.set_property('zorder', 1)
+
+            compositor1_sink_0_peer = compositor1_sink_0.get_peer()
+            compositor1_sink_0_peer.unlink(compositor1_sink_0)
+            compositor2_sink_0_peer = compositor2_sink_0.get_peer()
+            compositor2_sink_0_peer.unlink(compositor2_sink_0)
+
+            self.source_bin1.set_state(Gst.State.NULL)
+            self.source_bin2.set_state(Gst.State.NULL)
+            self.pipeline.remove(self.source_bin1)
+            self.pipeline.remove(self.source_bin2)
+            #self.source_bin1.unref()
+            #self.source_bin2.unref()
+            self.source_bin1 = None
+            self.source_bin2 = None
+        else:
+            compositor1_sink_0 = self.compositor1.get_static_pad('sink_0')
+            #compositor1_sink_1 = self.compositor1.get_static_pad('sink_1')
+            compositor1_sink_0.set_property('alpha', 0)
+            #compositor1_sink_1.set_property('zorder', 1)
+
+            compositor1_sink_0_peer = compositor1_sink_0.get_peer()
+            compositor1_sink_0_peer.unlink(compositor1_sink_0)
+
+            self.source_bin1.set_state(Gst.State.NULL)
+            self.pipeline.remove(self.source_bin1)
+            #self.source_bin1.unref()
+            self.source_bin1 = None
+        return True
+
+
 
     def modify_settings(self, settings1, settings2):
         print(f'Using new settings for camera1: {settings1} and camera2: {settings2}')
@@ -575,6 +705,15 @@ class output_connector():
 
     def __del__(self):
         print(f'Destructor of output connector "{self.label}" class')
+        if self.source_bin1:
+            self.source_bin1.set_state(Gst.State.READY)
+            self.source_bin1.set_state(Gst.State.NULL)
+            self.source_bin1 = None
+        if self.source_bin2:
+            self.source_bin2.set_state(Gst.State.READY)
+            self.source_bin2.set_state(Gst.State.NULL)
+            self.source_bin2 = None
+
         if self.pipeline:
             self.pipeline.send_event(Gst.Event.new_eos())
             time.sleep(1)
@@ -640,7 +779,7 @@ def main(args):
                                    'skip_audio_val': skip_audio_val_parameter,
                                    'skip_cameras_val': skip_cameras_val_parameter,
                                    'video_output': req_data['data']['device']['settings']['video_output'],
-                                   'is_reserve': req_data['data']['device']['is_reserve']}
+                                   'is_reserve': not req_data['data']['device']['is_reserve']}
                 wifi_settings = req_data['data']['device']['wifi_settings']
 
                 if not ngrok_tunnel.is_ssh_launched and global_settings['enable_ssh']:
@@ -666,7 +805,7 @@ def main(args):
                                'skip_cameras_val': SKIP_CAMERAS_VALUE,
                                'video_output': VIDEO_FOLDER,
                                'is_reserve': False}
-        time.sleep(10)
+        time.sleep(1)
         wait_for_streaming = global_settings['is_reserve'] or not channelsProvided
 
     print("We're asked to stream, launching it")
@@ -694,6 +833,8 @@ def main(args):
     GLib.timeout_add_seconds(CHECK_FILES_EVERY, cb_timeout, None)
     GLib.timeout_add_seconds(CHECK_USB_EVERY, cb_check_usb, None)
     GLib.timeout_add_seconds(CHECK_SETTINGS_EVERY, cb_check_settings, None)
+    GLib.timeout_add_seconds(30, output.disconnect_usbs)
+    GLib.timeout_add_seconds(35, output.connect_usbs)
 
     output.run_pipeline()
 
