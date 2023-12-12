@@ -11,7 +11,6 @@ from dotenv import load_dotenv
 from pyngrok import ngrok
 import NetworkManager
 from dbus import SystemBus, Interface
-#from dbus.types import Dictionary, String, Array, ByteArray, Byte
 
 interface_netman = "org.freedesktop.NetworkManager"
 path_netman_settings = "/org/freedesktop/NetworkManager/Settings"
@@ -51,8 +50,7 @@ import gi
 gi.require_version('Gst', '1.0')
 from gi.repository import GLib, Gst
 
-l_devices = None
-d_counter = None
+device_slot = []
 current_settings1 = None
 current_settings2 = None
 current_global_settings = None
@@ -102,17 +100,23 @@ def get_usb_devices():
             d_name = d.split('\n\t')[0]
             d_address = d.split('\n\t')[1]
             l_devices.append(d_address)
-            print(f'Found device #{d_counter}: address {d_address} name {d_name}')
+            # print(f'Found device #{d_counter}: address {d_address} name {d_name}')
     #rejecting first several devices in system
     d_counter-=SKIP_CAMERAS_VALUE
+
     if d_counter > 2:
-        print(f'More than 2 cameras found, we would use last 2')
+        # print(f'More than 2 cameras found, we would use last 2')
+        d_counter = 2
+        l_devices=l_devices[:2]
     elif d_counter == 2:
-        print(f'All 2 cameras found automatically')
+        pass
+        # print(f'All 2 cameras found automatically')
     elif d_counter == 0:
-        print('Unable to find cameras')
+        # print('Unable to find cameras')
+        pass
     elif d_counter == 1:
-        print('Only 1 camera found')
+        # print('Only 1 camera found')
+        pass
     return l_devices, d_counter
 
 def get_audio_devices():
@@ -139,26 +143,35 @@ def get_audio_devices():
     return l_devices, d_counter
 
 
-def compare_usb_devices(l_devices, d_counter, l_devices_new, d_counter_new):
-    if (d_counter != d_counter_new) or (len(l_devices) != len(l_devices_new)):
-        print('Number of USB cameras changed')
-        return False
-    else:
-        for i in range(len(l_devices)):
-            if l_devices[i] != l_devices_new[i]:
-                return False
-    return True
-
-def cb_check_usb(b):
+def cb_check_usb(output):
     try:
-        print('Callback: performing USB check')
+        # print('Callback: performing USB check')
         l_devices_new, d_counter_new = get_usb_devices()
-        if not compare_usb_devices(l_devices, d_counter, l_devices_new, d_counter_new):
-            print('Connected USB cameras configuration changed. Relaunching script')
-            exit(3)
-        else:
-            pass
-            #print('No changes of USB cameras observed')
+        #Filling device slots:
+        for device in l_devices_new:
+            # print(f'Checking device {device}. Device slot list is {device_slot}')
+            if (device not in device_slot) and len(device_slot)<2:
+                print(f'Appending device {device} to slot list.')
+                device_slot.append(device)
+                camera_num = len(device_slot)-1
+                output.set_usb_camera_address(device, camera_num)
+                output.connect_usb_camera(camera_num)
+            elif (device == device_slot[0]) and not output.source_bins[0]:
+                print(f'Connecting device {device} back to slot #{0}')
+                output.connect_usb_camera(0)
+            elif (device == device_slot[1]) and not output.source_bins[1]:
+                print(f'Connecting device {device} back to slot #{1}')
+                output.connect_usb_camera(1)
+
+        #Disconnecting slots which are without USB camera for this slot
+        # #TODO: do we really need it? Or watchdog+error handle better?
+        # for slot_num in range(len(device_slot)):
+        #     if device_slot[slot_num] in l_devices_new:
+        #         #we have this camera active, ignoring
+        #         pass
+        #     else:
+        #         print(f'Disconnecting USB slot #{slot_num} by callback')
+        #         output.disconnect_usb_camera(slot_num)
     except Exception as ex:
         print(f'Exception at USB check callback: {str(ex)}')
         return True
@@ -167,7 +180,7 @@ def cb_check_usb(b):
 def get_cameras_settings():
     try:
         req3 = requests.post(INTEGRATION_ENDPOINT, data={"serial": serial})
-        print(f'Received: {req3}')
+        # print(f'Received: {req3}')
         req_data = req3.json()
         #print(f"ssh={req_data['data']['device']['enable_ssh']}")
         settings1 = {'bitrate': req_data['data']['channels'][0]['bitrate'] * 1000,
@@ -214,9 +227,6 @@ def cb_check_settings(b):
         else:
             pass
             #print('No changes of settings observed')
-        #print(set(current_global_settings.items()) ^ set(global_settings.items()))
-        #print(set(current_global_settings.items()))
-        #print(set(global_settings.items()))
         if len(set(current_global_settings.items()) ^ set(global_settings.items())) > 0:
             print('Device settings changed. Adjusting')
             output.modify_device_settings(global_settings)
@@ -244,16 +254,11 @@ def remove_pipeline(pipeline, label):
     time.sleep(0.1)
 
     state = pipeline.set_state(Gst.State.READY)
-    # print(f'1******{state}')
     time.sleep(0.5)
-    # print(f'!!!!!!!!!{self.pipeline.get_state(Gst.CLOCK_TIME_NONE)}')
     state = pipeline.set_state(Gst.State.NULL)
-    #print(f'2******{state}')
     time.sleep(0.5)
-    #print(f'!!!!!!!!!{pipeline.get_state(Gst.CLOCK_TIME_NONE)}')
 
     pipeline = None
-    #self.bus = None
     time.sleep(0.5)
     print(f'Removed pipeline "{label}"')
 
@@ -328,9 +333,13 @@ class NgrokTunnel():
 
 
 class output_connector():
-    def __init__(self, label, rtmp_path1, rtmp_path2, device1, device2, settings1, settings2, global_settings):
+    def __init__(self, label, rtmp_path1, rtmp_path2, settings1, settings2, global_settings):
         print(f'Init output_connector "{label}" class')
         self.pipeline=None
+        self.bus = None
+        self.source_bins = [None, None]
+        self.source_bin_strs = ['', '']
+        self.compositors = []
         self.label=label
         self.save_path=global_settings['video_output']
         self.bitrate=BITRATE
@@ -340,17 +349,19 @@ class output_connector():
         self.video_duration=VIDEO_DURATION
         self.status='NULL'
         self.active_camera=None
-        self.device1 = device1
-        self.device2 = device2
+        self.devices = [None, None]
+        #TODO: enable num_devices=1 case (the only one streaming output)
+        self.num_devices = 0
         self.settings1 = settings1
         self.settings2 = settings2
         self.global_settings = global_settings
         self.ngrok_tunnel = NgrokTunnel()
 
-        if self.device1 and self.device2:
-            self.num_devices = 2
-        elif self.device1 and self.device2 is None:
-            self.num_devices = 1
+        # if self.device1 and self.device2:
+        #     self.num_devices = 2
+        # elif self.device1 and self.device2 is None:
+        #     self.num_devices = 1
+        # elif self.device1 is None and self.device2 is None:
 
         if AUTO_DETECT_AUDIO:
             l_audio_devices, d_audio_counter = get_audio_devices()
@@ -384,29 +395,29 @@ class output_connector():
         else:
             audio_input = f'audiotestsrc is-live=1 wave=silence ! audioresample ! audio/x-raw,rate=48000 ! voaacenc bitrate=96000 ! audio/mpeg ! aacparse ! audio/mpeg, mpegversion=4'
 
-        if self.num_devices == 2:
-            gcommand = f"""v4l2src do-timestamp=1 device={self.device1} ! image/jpeg,framerate={VIDEO_FRAMERATE1}/1,width=1920,height=1080 ! queue ! mppjpegdec ! videoconvert !  
-                mpph264enc name=encoder1 profile=main qos=1 header-mode=1 profile=main bps={BITRATE} bps-max={BITRATE+1000000} rc-mode=vbr ! video/x-h264,level=(string)4 ! h264parse config-interval=1 ! tee name=tee1_{self.label} ! 
-                queue ! flvmux name=mux streamable=1 ! watchdog timeout={self.watchdog_timeout} ! {rtmp_output_element} sync=0 name=rtmpsink1{self.label} location=\"{self.rtmp_path1}\"
-                v4l2src do-timestamp=1 device={self.device2} ! image/jpeg,framerate={VIDEO_FRAMERATE2}/1,width=1920,height=1080 ! queue ! mppjpegdec ! videoconvert !  
-                mpph264enc name=encoder2 profile=main qos=1 header-mode=1 profile=main bps={BITRATE} bps-max={BITRATE+1000000} rc-mode=vbr ! video/x-h264,level=(string)4 ! h264parse config-interval=1 ! tee name=tee2_{self.label} ! 
-                queue ! flvmux name=mux2 streamable=1 ! watchdog timeout={self.watchdog_timeout} ! {rtmp_output_element} sync=0 name=rtmpsink2{self.label} location=\"{self.rtmp_path2}\"
-                {audio_input} ! tee name=audiotee ! queue ! mux.
-                audiotee. !  queue ! mux2. 
-                tee1_{self.label}. ! queue !  
-                splitmuxsink name=splitmuxsink1{self.label} async-handling=1 message-forward=1 max-size-time={self.video_duration * 60 * 1000000000} location={self.save_path}start1_{self.label}.mp4
-                tee2_{self.label}. ! queue !  
-                splitmuxsink name=splitmuxsink2{self.label} async-handling=1 message-forward=1 max-size-time={self.video_duration * 60 * 1000000000} location={self.save_path}start2_{self.label}.mp4"""
-        elif self.num_devices == 1:
-            gcommand = f"""v4l2src do-timestamp=1 device={self.device1} ! image/jpeg,framerate={VIDEO_FRAMERATE1}/1,width=1920,height=1080 ! queue ! mppjpegdec ! videoconvert !  
-                mpph264enc name=encoder1 profile=main qos=1 header-mode=1 profile=main bps={BITRATE} bps-max={BITRATE+1000000} rc-mode=vbr ! video/x-h264,level=(string)4 ! h264parse config-interval=1 ! tee name=tee1_{self.label} ! 
-                queue ! flvmux name=mux streamable=1 ! watchdog timeout={self.watchdog_timeout} ! {rtmp_output_element} sync=0 name=rtmpsink1{self.label} location=\"{self.rtmp_path1}\"
-                {audio_input} ! tee name=audiotee ! queue ! mux.
-                tee1_{self.label}. ! queue !  
-                splitmuxsink name=splitmuxsink1{self.label} async-handling=1 message-forward=1 max-size-time={self.video_duration * 60 * 1000000000} location={self.save_path}start1_{self.label}.mp4"""
+        gcommand = f"""videotestsrc pattern=0 is-live=1 ! videoconvert ! video/x-raw,width=1920,height=1080,framerate={VIDEO_FRAMERATE1}/1 !  source_compositor1.sink_0    
+            input-selector name=source_compositor1 sync-mode=1 ! videoconvert !  
+            mpph264enc name=encoder1 profile=main qos=1 header-mode=1 profile=main bps={BITRATE} bps-max={BITRATE + 1000000} rc-mode=vbr ! video/x-h264,level=(string)4 ! h264parse config-interval=1 ! tee name=tee1_{self.label} ! 
+            queue ! flvmux name=mux streamable=1 ! watchdog timeout={self.watchdog_timeout} ! {rtmp_output_element} sync=0 name=rtmpsink1{self.label} location=\"{self.rtmp_path1}\"
+             videotestsrc pattern=0 is-live=1 ! videoconvert ! video/x-raw,width=1920,height=1080,framerate={VIDEO_FRAMERATE2}/1 ! source_compositor2.sink_0 
+            input-selector name=source_compositor2 sync-mode=1 ! videoconvert !  
+            mpph264enc name=encoder2 profile=main qos=1 header-mode=1 profile=main bps={BITRATE} bps-max={BITRATE + 1000000} rc-mode=vbr ! video/x-h264,level=(string)4 ! h264parse config-interval=1 ! tee name=tee2_{self.label} ! 
+            queue ! flvmux name=mux2 streamable=1 ! watchdog timeout={self.watchdog_timeout} ! {rtmp_output_element} sync=0 name=rtmpsink2{self.label} location=\"{self.rtmp_path2}\"
+            {audio_input} ! tee name=audiotee ! queue ! mux.
+            audiotee. !  queue ! mux2. 
+            tee1_{self.label}. ! queue !  
+            splitmuxsink name=splitmuxsink1{self.label} async-handling=1 message-forward=1 max-size-time={self.video_duration * 60 * 1000000000} location={self.save_path}start1_{self.label}.mp4
+            tee2_{self.label}. ! queue !  
+            splitmuxsink name=splitmuxsink2{self.label} async-handling=1 message-forward=1 max-size-time={self.video_duration * 60 * 1000000000} location={self.save_path}start2_{self.label}.mp4"""
 
         print(f'Gstreamer pipeline: {gcommand}\n')
         self.pipeline = Gst.parse_launch(gcommand)
+
+        for camera_num in range(2):
+            self.compositors.append(self.pipeline.get_by_name(f'source_compositor{camera_num+1}'))
+        print(f'Compositors: {self.compositors}')
+
+        # self.connect_usbs()
 
         self.bus = self.pipeline.get_bus()
         self.bus.add_signal_watch()
@@ -429,24 +440,63 @@ class output_connector():
         self.modify_settings(self.settings1, self.settings2)
         self.modify_device_settings(self.global_settings)
 
+    def connect_usb_camera(self, camera_num):
+        if self.source_bins[camera_num]:
+            print(f"!!! Error: USB source bin {camera_num} wasn't destroyed")
+            self.disconnect_usb_camera(camera_num)
+            time.sleep(0.5)
+        self.source_bins[camera_num] = Gst.parse_bin_from_description(self.source_bin_strs[camera_num], True)
+        print(f'Searching for compositor source_compositor{camera_num+1}')
+        pad1 = self.compositors[camera_num].get_request_pad('sink_%u')
+        if not pad1:
+            print(f'Unable to retrieve sink pad from compositor source_compositor{camera_num+1}')
+        self.pipeline.add(self.source_bins[camera_num])
+        self.source_bins[camera_num].sync_state_with_parent()
+        src1 = self.source_bins[camera_num].get_static_pad('src')
+        src1.link(pad1)
+        self.compositors[camera_num].set_property("active-pad", pad1)
+        print(f'Camera {camera_num} is connected back')
+        return True
+
+    def set_usb_camera_address(self, address, camera_num):
+        self.devices[camera_num] = address
+        self.source_bin_strs[camera_num] = f'v4l2src do-timestamp=1 device={self.devices[camera_num]} ! image/jpeg,framerate={VIDEO_FRAMERATE1 if camera_num == 0 else VIDEO_FRAMERATE2}/1,width=1920,height=1080 ! queue ! mppjpegdec ! watchdog timeout=1000 '
+        print(f'Camera {camera_num} address set to {address}. Bin pipeline is {self.source_bin_strs[camera_num]}')
+
+
+    def disconnect_usb_camera(self, camera_num):
+        pad10 = self.compositors[camera_num].get_static_pad('sink_0')
+        self.compositors[camera_num].set_property("active-pad", pad10)
+
+        pad11 = self.compositors[camera_num].get_static_pad('sink_1')
+        compositor1_sink_0_peer = pad11.get_peer()
+        if compositor1_sink_0_peer:
+            compositor1_sink_0_peer.unlink(pad11)
+
+        if self.source_bins[camera_num]:
+            self.source_bins[camera_num].set_state(Gst.State.NULL)
+            self.pipeline.remove(self.source_bins[camera_num])
+            self.source_bins[camera_num] = None
+        return True
+
     def modify_settings(self, settings1, settings2):
         print(f'Using new settings for camera1: {settings1} and camera2: {settings2}')
-        if self.device1:
+        if self.devices[0]:
             encoder1 = self.pipeline.get_by_name('encoder1')
             encoder1.set_property('bps', settings1['bitrate'])
             encoder1.set_property('bps-max', settings1['bitrate']+1000000)
-            disable_auto_white_balance_cmd1 = f'v4l2-ctl --device {self.device1} -c white_balance_temperature_auto=0'
+            disable_auto_white_balance_cmd1 = f'v4l2-ctl --device {self.devices[0]} -c white_balance_temperature_auto=0'
             disable_auto_white_balance1 = subprocess.run(["bash", "-c", disable_auto_white_balance_cmd1], stdout=subprocess.PIPE)
-            set_white_balance_cmd1 = f'v4l2-ctl --device {self.device1} -c white_balance_temperature={settings1["white_balance"]}'
+            set_white_balance_cmd1 = f'v4l2-ctl --device {self.devices[0]} -c white_balance_temperature={settings1["white_balance"]}'
             set_white_balance1 = subprocess.run(["bash", "-c", set_white_balance_cmd1], stdout=subprocess.PIPE)
         self.settings1 = settings1
-        if self.device2:
+        if self.devices[1]:
             encoder2 = self.pipeline.get_by_name('encoder2')
             encoder2.set_property('bps', settings2['bitrate'])
             encoder2.set_property('bps-max', settings2['bitrate']+1000000)
-            disable_auto_white_balance_cmd2 = f'v4l2-ctl --device {self.device2} -c white_balance_temperature_auto=0'
+            disable_auto_white_balance_cmd2 = f'v4l2-ctl --device {self.devices[1]} -c white_balance_temperature_auto=0'
             disable_auto_white_balance2 = subprocess.run(["bash", "-c", disable_auto_white_balance_cmd2], stdout=subprocess.PIPE)
-            set_white_balance_cmd2 = f'v4l2-ctl --device {self.device2} -c white_balance_temperature={settings2["white_balance"]}'
+            set_white_balance_cmd2 = f'v4l2-ctl --device {self.devices[1]} -c white_balance_temperature={settings2["white_balance"]}'
             set_white_balance2 = subprocess.run(["bash", "-c", set_white_balance_cmd2], stdout=subprocess.PIPE)
         self.settings2 = settings2
 
@@ -513,17 +563,35 @@ class output_connector():
         return Gst.PadProbeReturn.OK
 
     def error_callback(self, bus, msg):
-        print(f'Error in RTMP pipeline "{self.pipeline}":{msg.parse_error()}')
+        element = msg.src
+        element_name = element.get_property('name')
+        parent = element.get_parent()
+        if parent:
+            parent_name = parent.get_property('name')
+        else:
+            parent_name = ''
+        print(f'ERROR in main pipeline from {element_name}, parent = {parent_name}: {msg.parse_error()}')
+        if parent in self.source_bins:
+            print(f'!!!!!!!!!!!!!!!!!!!!!!Error in source bin, need to remove it. It will be launched back automatically by call back')
+            if self.source_bins[0]:
+                if parent.get_property('name') == self.source_bins[0].get_property('name'):
+                    self.disconnect_usb_camera(0)
+            if self.source_bins[1]:
+                if parent.get_property('name') == self.source_bins[1].get_property('name'):
+                    self.disconnect_usb_camera(1)
+            # else:
+            #     print(f'Unable to identify bin with name {parent_name}. Not sure what to remove')
 
-        if self.pipeline:
-            print(f'Calling async pipeline destruction for output_connector class "{self.label}"')
-            self.pipeline.call_async(remove_pipeline, self.label)
-            time.sleep(5)
-            print(f'End of calling async pipeline destruction for output_connector class "{self.label}"')
+        else:
+            print(f'Error in RTMP pipeline "{self.pipeline}":{msg.parse_error()}')
+            if self.pipeline:
+                print(f'Calling async pipeline destruction for output_connector class "{self.label}"')
+                self.pipeline.call_async(remove_pipeline, self.label)
+                time.sleep(5)
+                print(f'End of calling async pipeline destruction for output_connector class "{self.label}"')
 
-        exit(2)
-        # print('NeedReload=True')
-        # self.launch_pipeline()
+            exit(2)
+
         return Gst.PadProbeReturn.OK
 
     def state_changed_callback(self, bus, msg):
@@ -575,9 +643,15 @@ class output_connector():
 
     def __del__(self):
         print(f'Destructor of output connector "{self.label}" class')
+        if self.source_bins[0]:
+            self.disconnect_usb_camera(0)
+        if self.source_bins[1]:
+            self.disconnect_usb_camera(1)
+
+        time.sleep(0.5)
         if self.pipeline:
             self.pipeline.send_event(Gst.Event.new_eos())
-            time.sleep(1)
+            time.sleep(0.1)
 
             self.pipeline.set_state(Gst.State.READY)
             self.pipeline.set_state(Gst.State.NULL)
@@ -585,7 +659,7 @@ class output_connector():
             self.pipeline=None
 
 def main(args):
-    global l_devices, d_counter
+    global device_slot
     global current_settings1, current_settings2, current_global_settings, current_wifi_settings
     global output
     global serial
@@ -613,7 +687,7 @@ def main(args):
         if not DO_LOCAL_OUTPUT:
             try:
                 req3 = requests.post(INTEGRATION_ENDPOINT, data={"serial": serial})
-                print(f'Received: {req3}')
+                # print(f'Received: {req3}')
                 req_data = req3.json()
                 #print(f'Json received: {req_data}')
                 if req_data['data']['channels'] == []:
@@ -666,7 +740,10 @@ def main(args):
                                'skip_cameras_val': SKIP_CAMERAS_VALUE,
                                'video_output': VIDEO_FOLDER,
                                'is_reserve': False}
-        time.sleep(10)
+            playbackUrl1 = ''
+            playbackUrl2 = ''
+            wifi_settings = []
+        time.sleep(1)
         wait_for_streaming = global_settings['is_reserve'] or not channelsProvided
 
     print("We're asked to stream, launching it")
@@ -682,17 +759,23 @@ def main(args):
     current_global_settings = global_settings
     current_wifi_settings = wifi_settings
 
-    l_devices, d_counter = get_usb_devices()
 
-    if AUTO_DETECT_USB_PORTS and (d_counter >= 2):
-        output=output_connector('output', streaming_address1, streaming_address2, l_devices[-2], l_devices[-1], current_settings1, current_settings2, current_global_settings)
-    elif AUTO_DETECT_USB_PORTS and (d_counter >= 1):
-        output = output_connector('output', streaming_address1, streaming_address2, l_devices[-1], None, current_settings1, current_settings2, current_global_settings)
+    # if AUTO_DETECT_USB_PORTS and (d_counter >= 2):
+    #     output=output_connector('output', streaming_address1, streaming_address2, l_devices[-2], l_devices[-1], current_settings1, current_settings2, current_global_settings)
+    # elif AUTO_DETECT_USB_PORTS and (d_counter >= 1):
+    #     output = output_connector('output', streaming_address1, streaming_address2, l_devices[-1], None, current_settings1, current_settings2, current_global_settings)
+    # elif AUTO_DETECT_USB_PORTS and (d_counter == 0):
+    #     output=output_connector('output', streaming_address1, streaming_address2, None, None, current_settings1, current_settings2, current_global_settings)
+    if AUTO_DETECT_USB_PORTS:
+         output=output_connector('output', streaming_address1, streaming_address2, current_settings1, current_settings2, current_global_settings)
     else:
-        output=output_connector('output', streaming_address1, streaming_address2, VIDEO_DEVICE1, VIDEO_DEVICE2, current_settings1, current_settings2, current_global_settings)
+        device_slot = [VIDEO_DEVICE1, VIDEO_DEVICE2]
+        output=output_connector('output', streaming_address1, streaming_address2, current_settings1, current_settings2, current_global_settings)
+    # else:
+    #     print('Unhandled case occured, exiting...')
 
     GLib.timeout_add_seconds(CHECK_FILES_EVERY, cb_timeout, None)
-    GLib.timeout_add_seconds(CHECK_USB_EVERY, cb_check_usb, None)
+    GLib.timeout_add_seconds(CHECK_USB_EVERY, cb_check_usb, output)
     GLib.timeout_add_seconds(CHECK_SETTINGS_EVERY, cb_check_settings, None)
 
     output.run_pipeline()
