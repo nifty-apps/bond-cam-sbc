@@ -18,13 +18,15 @@ Follow the steps below to set up Bond Cam on your Single Board Computer (SBC).
 2. **Install the `python-dotenv` library using `pip3`:**
     ```bash
     pip3 install python-dotenv python-networkmanager pyngrok
+    export PATH="$PATH:/home/nifty/.local/bin"
+    source ~/.bashrc
     ```
 
 3. **Clone the Bond Cam SBC repository:**
     ```bash
     mkdir /home/nifty/Projects
     cd /home/nifty/Projects
-    git clone https://bond-cam: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@github.com/nifty-apps/bond-cam-sbc.git /home/nifty/Projects/bondcam_streaming    
+    git clone https://bond-cam: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@github.com/nifty-apps/bond-cam-sbc.git /home/nifty/Projects/bondcam_streaming    
     ```
 
 4. **Navigate to the cloned directory:**
