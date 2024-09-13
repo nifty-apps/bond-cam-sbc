@@ -10,8 +10,6 @@ IgnoreSIGPIPE=true
 Restart=always
 RestartSec=3
 Type=simple
-StandardOutput=append:/home/nifty/Projects/bondcam_streaming/bondcam_streaming.log
-StandardError=append:/home/nifty/Projects/bondcam_streaming/bondcam_streaming.log
 
 [Install]
 WantedBy=multi-user.target

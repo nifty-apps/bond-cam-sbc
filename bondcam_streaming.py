@@ -54,11 +54,49 @@ device_slot = []
 current_settings1 = None
 current_settings2 = None
 current_global_settings = None
-current_wifi_settings = None
 output = None
 serial = None
 skip_audio_val=0
 skip_cameras_val=0
+
+def get_serial_number():
+    """Fetches the CPU serial number."""
+    cmd_cpuinfo = "cat /proc/cpuinfo | grep Serial"
+    result = subprocess.run(["bash", "-c", cmd_cpuinfo], stdout=subprocess.PIPE)
+    serial_raw = result.stdout.decode('utf-8').split(' ')[-1]
+    return re.sub(r"[\n\t\s]*", "", serial_raw)
+
+def configure_network_priorities():
+    """Configures network priorities for various network types."""
+    print('Configuring connection priorities for network connections discovered:')
+    list_all_connections()
+    set_networks_priorities('ethernet', 0)
+    set_networks_priorities('wifi', 10)
+    set_networks_priorities('gsm', 50)
+    set_networks_priorities('cdma', 50)
+
+def modify_wifi_settings(wifi_settings, serial):
+        for w in wifi_settings:
+            ssid, password = w['ssid'], w['password']
+            check_cmd = f"nmcli -g NAME connection show | grep -w '{ssid}'"
+            check_state_cmd = f"nmcli -g GENERAL.STATE connection show '{ssid}'"
+            modify_cmd = f"sudo nmcli connection modify '{ssid}' wifi-sec.key-mgmt wpa-psk wifi-sec.psk '{password}'"
+            add_cmd = f"sudo nmcli device wifi rescan && sudo nmcli connection add type wifi con-name '{ssid}' ssid '{ssid}' wifi-sec.key-mgmt wpa-psk wifi-sec.psk '{password}'"
+            check_result = subprocess.run(["bash", "-c", check_cmd], stdout=subprocess.PIPE)
+            if check_result.returncode == 0 and check_result.stdout.strip():
+                state = subprocess.run(["bash", "-c", check_state_cmd], stdout=subprocess.PIPE).stdout.decode('utf-8').strip()
+                action = "skipped" if state == "activated" else subprocess.run(["bash", "-c", modify_cmd], stdout=subprocess.PIPE).returncode == 0 and "updated"
+            else:
+                action = subprocess.run(["bash", "-c", add_cmd], stdout=subprocess.PIPE).returncode == 0 and "added"
+
+            if action:
+                print(f"WiFi settings {action} for SSID: {ssid}")
+            else:
+                print(f"Failed to {action} WiFi settings for SSID: {ssid}")
+
+        current_timestamp = datetime.utcnow().isoformat()
+        req3 = requests.put(INTEGRATION_ENDPOINT_UPDATE, data={"serial": serial, "doResetWifi": False, "wifiSettingsUpdatedAt": current_timestamp})
+        print(f'Received response: {req3.text}')
 
 def remove_old_files(folder, extension, hours_delta):
     now = datetime.now()
@@ -233,14 +271,6 @@ def cb_check_settings(b):
             current_global_settings = global_settings
         else:
             pass
-            # print('No changes of settings observed')
-        if do_renew_wifi:
-            print('Device wifi settings asked to be changed. Adjusting')
-            output.modify_wifi_settings(wifi_settings)
-            current_wifi_settings = wifi_settings
-        else:
-            pass
-            # print('No changes of settings observed')
     except Exception as ex:
         print(f'Exception at settings check callback: {str(ex)}')
         return True
@@ -406,9 +436,9 @@ class output_connector():
             {audio_input} ! tee name=audiotee ! queue ! mux.
             audiotee. !  queue ! mux2. 
             tee1_{self.label}. ! queue !  
-            splitmuxsink name=splitmuxsink1{self.label} async-handling=1 message-forward=1 max-size-time={self.video_duration * 60 * 1000000000} location={self.save_path}start1_{self.label}.mp4
+            splitmuxsink name=splitmuxsink1{self.label} async-handling=1 message-forward=1 max-size-time={self.video_duration * 60 * 1000000000}
             tee2_{self.label}. ! queue !  
-            splitmuxsink name=splitmuxsink2{self.label} async-handling=1 message-forward=1 max-size-time={self.video_duration * 60 * 1000000000} location={self.save_path}start2_{self.label}.mp4"""
+            splitmuxsink name=splitmuxsink2{self.label} async-handling=1 message-forward=1 max-size-time={self.video_duration * 60 * 1000000000}"""
 
         print(f'Gstreamer pipeline: {gcommand}\n')
         self.pipeline = Gst.parse_launch(gcommand)
@@ -430,11 +460,11 @@ class output_connector():
         self.bus.connect('message::stream_status', self.on_stream_status)
         self.bus.connect('message::request_state', self.on_request_state)
 
-        sink = self.pipeline.get_by_name(f'splitmuxsink1{self.label}')
-        sink.connect('format-location', self.format_location_callback1)
-        if self.num_devices == 2:
-            sink = self.pipeline.get_by_name(f'splitmuxsink2{self.label}')
-            sink.connect('format-location', self.format_location_callback2)
+        # sink = self.pipeline.get_by_name(f'splitmuxsink1{self.label}')
+        # sink.connect('format-location', self.format_location_callback1)
+        # if self.num_devices == 2:
+        #     sink = self.pipeline.get_by_name(f'splitmuxsink2{self.label}')
+        #     sink.connect('format-location', self.format_location_callback2)
 
         self.pipeline.set_state(Gst.State.PLAYING)
         self.modify_settings(self.settings1, self.settings2)
@@ -525,35 +555,18 @@ class output_connector():
 
         self.global_settings = global_settings
 
-    def modify_wifi_settings(self, wifi_settings):
-        for w in wifi_settings:
-            ssid, password = w['ssid'], w['password']
-            cmd_wifi = f"""if nmcli connection show | grep -q "{ssid}"; then
-                              echo "Updating existing WiFi connection: {ssid}"
-                              sudo nmcli connection modify "{ssid}" wifi-sec.key-mgmt wpa-psk wifi-sec.psk "{password}"
-                           else
-                              echo "Adding new WiFi connection: {ssid}"
-                              sudo nmcli device wifi rescan
-                              sudo nmcli connection add type wifi con-name "{ssid}" ifname "*" ssid "{ssid}"
-                              sudo nmcli connection modify "{ssid}" wifi-sec.key-mgmt wpa-psk wifi-sec.psk "{password}"
-                           fi
-                        """
-            wifi_result = subprocess.run(["bash", "-c", cmd_wifi], stdout=subprocess.PIPE)
-        req3 = requests.put(INTEGRATION_ENDPOINT_UPDATE, data={"serial": serial, "doResetWifi":False, "wifiSettingsUpdated":True})
-        print(f'Received answer on wifi updated PUT request: {req3}')
 
+    # def format_location_callback1(self, splitmux, fragment_id):
+    #     now = datetime.now()
+    #     file_path=f'{self.save_path}stream1_{now.isoformat()}.mp4'
+    #     print(f'Stream 1 is starting to record into a new videofile {file_path}')
+    #     return file_path
 
-    def format_location_callback1(self, splitmux, fragment_id):
-        now = datetime.now()
-        file_path=f'{self.save_path}stream1_{now.isoformat()}.mp4'
-        print(f'Stream 1 is starting to record into a new videofile {file_path}')
-        return file_path
-
-    def format_location_callback2(self, splitmux, fragment_id):
-        now = datetime.now()
-        file_path=f'{self.save_path}stream2_{now.isoformat()}.mp4'
-        print(f'Stream 2 is starting to record into a new videofile {file_path}')
-        return file_path
+    # def format_location_callback2(self, splitmux, fragment_id):
+    #     now = datetime.now()
+    #     file_path=f'{self.save_path}stream2_{now.isoformat()}.mp4'
+    #     print(f'Stream 2 is starting to record into a new videofile {file_path}')
+    #     return file_path
 
     def get_label(self):
         return self.label
@@ -664,21 +677,28 @@ def main(args):
     global current_settings1, current_settings2, current_global_settings, current_wifi_settings
     global output
     global serial
+    
+    serial = get_serial_number()
+    configure_network_priorities()
 
+    try:
+        req3 = requests.post(INTEGRATION_ENDPOINT, data={"serial": serial})
+        req_data = req3.json()
+        wifi_settings = req_data['data']['device']['wifi_settings']
 
-    cmd_cpuinfo = """cat /proc/cpuinfo | grep Serial"""
-    cpuinfo = subprocess.run(["bash", "-c", cmd_cpuinfo], stdout=subprocess.PIPE)
-    serial_raw = cpuinfo.stdout.decode('utf-8').split(' ')[-1]
-    serial = re.sub(r"[\n\t\s]*", "", serial_raw)
+        do_reset_wifi = req_data['data']['device'].get('doResetWifi', False)
 
-    print(f'Cpu serial is {serial}')
-
-    print('Configuring connection priorities for network connections discovered:')
-    list_all_connections()
-    set_networks_priorities('ethernet', 0)
-    set_networks_priorities('wifi', 10)
-    set_networks_priorities('gsm', 50)
-    set_networks_priorities('cdma', 50)
+        print ('do_reset_wifi',do_reset_wifi)
+    
+        # Check if doResetWifi is true before modifying the wifi settings
+        if do_reset_wifi:
+            serial = get_serial_number()
+            modify_wifi_settings(wifi_settings, serial)
+        else:
+            print("doResetWifi is false, skipping modify_wifi_settings.")
+        
+    except Exception as e:
+        print(f"An error occurred: {e}")
 
     Gst.init(None)
 

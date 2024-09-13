@@ -9,8 +9,6 @@ KillMode=process
 IgnoreSIGPIPE=true
 Restart=no
 Type=simple
-StandardOutput=append:/home/nifty/Projects/bondcam_streaming/bondcam_startup.log
-StandardError=append:/home/nifty/Projects/bondcam_streaming/bondcam_startup.log
 
 [Install]
 WantedBy=multi-user.target
