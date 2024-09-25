@@ -11,6 +11,25 @@ from dotenv import load_dotenv
 from pyngrok import ngrok
 import NetworkManager
 from dbus import SystemBus, Interface
+import sys
+import threading
+import gi
+gi.require_version('Gtk', '3.0')
+gi.require_version('Gst', '1.0')
+from gi.repository import GLib, Gst, Gtk
+
+class MyWindow(Gtk.Window):
+    def __init__(self):
+        Gtk.Window.__init__(self, title="Timeout Example")
+        self.label = Gtk.Label(label="Waiting for update...")
+        self.add(self.label)
+
+        # Add a timeout to call the update_label function every 2 seconds
+        GLib.timeout_add_seconds(2, self.update_label)
+
+    def update_label(self):
+        self.label.set_text("Updated!")
+        return True
 
 interface_netman = "org.freedesktop.NetworkManager"
 path_netman_settings = "/org/freedesktop/NetworkManager/Settings"
@@ -77,7 +96,9 @@ def configure_network_priorities():
 
 def modify_wifi_settings(wifi_settings, serial):
         for w in wifi_settings:
-            ssid, password = w['ssid'], w['password']
+            ssid, password = w['ssid'], w['password']      
+            print(ssid, 'ssid')
+            print('password', password, )
             check_cmd = f"nmcli -g NAME connection show | grep -w '{ssid}'"
             check_state_cmd = f"nmcli -g GENERAL.STATE connection show '{ssid}'"
             modify_cmd = f"sudo nmcli connection modify '{ssid}' wifi-sec.key-mgmt wpa-psk wifi-sec.psk '{password}'"
@@ -97,6 +118,32 @@ def modify_wifi_settings(wifi_settings, serial):
         current_timestamp = datetime.utcnow().isoformat()
         req3 = requests.put(INTEGRATION_ENDPOINT_UPDATE, data={"serial": serial, "doResetWifi": False, "wifiSettingsUpdatedAt": current_timestamp})
         print(f'Received response: {req3.text}')
+
+def check_and_modify_wifi_settings():
+    try:
+        # Assuming 'serial' is defined or obtained elsewhere
+        serial = get_serial_number()  
+        req3 = requests.post(INTEGRATION_ENDPOINT, data={"serial": serial})
+        req_data = req3.json()
+        wifi_settings = req_data['data']['device']['wifi_settings']
+        print('wifi_settings:', wifi_settings)
+
+        do_reset_wifi = req_data['data']['device'].get('doResetWifi', False)
+        print('do_reset_wifi:', do_reset_wifi)
+
+        # Check if doResetWifi is true before modifying the wifi settings
+        if do_reset_wifi:
+            modify_wifi_settings(wifi_settings, serial)
+        else:
+            print("doResetWifi is false, skipping modify_wifi_settings.")
+    
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+def run_periodically(CHECK_SETTINGS_EVERY):
+    while True:
+        check_and_modify_wifi_settings()
+        time.sleep(CHECK_SETTINGS_EVERY)
 
 def remove_old_files(folder, extension, hours_delta):
     now = datetime.now()
@@ -677,30 +724,20 @@ def main(args):
     global current_settings1, current_settings2, current_global_settings, current_wifi_settings
     global output
     global serial
+
+    Gst.init(None)
     
     serial = get_serial_number()
     configure_network_priorities()
 
-    try:
-        req3 = requests.post(INTEGRATION_ENDPOINT, data={"serial": serial})
-        req_data = req3.json()
-        wifi_settings = req_data['data']['device']['wifi_settings']
+    # Correctly pass the argument in a tuple (use a comma after the number)
+    thread = threading.Thread(target=run_periodically, args=(CHECK_SETTINGS_EVERY,))
+    thread.daemon = True
+    thread.start()
 
-        do_reset_wifi = req_data['data']['device'].get('doResetWifi', False)
-
-        print ('do_reset_wifi',do_reset_wifi)
-    
-        # Check if doResetWifi is true before modifying the wifi settings
-        if do_reset_wifi:
-            serial = get_serial_number()
-            modify_wifi_settings(wifi_settings, serial)
-        else:
-            print("doResetWifi is false, skipping modify_wifi_settings.")
-        
-    except Exception as e:
-        print(f"An error occurred: {e}")
-
-    Gst.init(None)
+    win = MyWindow()
+    win.connect("destroy", Gtk.main_quit)
+    win.show_all()
 
     wait_for_streaming = True
     ngrok_tunnel = NgrokTunnel()
@@ -792,12 +829,25 @@ def main(args):
     else:
         device_slot = [VIDEO_DEVICE1, VIDEO_DEVICE2]
         output=output_connector('output', streaming_address1, streaming_address2, current_settings1, current_settings2, current_global_settings)
+    print("------------------------------------------------")
     # else:
     #     print('Unhandled case occured, exiting...')
 
     GLib.timeout_add_seconds(CHECK_FILES_EVERY, cb_timeout, None)
+    print("------------------------------------------------")
     GLib.timeout_add_seconds(CHECK_USB_EVERY, cb_check_usb, output)
+    print("-------------------------------------------------")
     GLib.timeout_add_seconds(CHECK_SETTINGS_EVERY, cb_check_settings, None)
+    print("--------------------------------------------------")
+
+    Gtk.main()
+
+    pipeline = Gst.parse_launch("videotestsrc ! x264enc ! splitmuxsink location=/path/to/output/file-%05d.mp4")
+    pipeline.set_state(Gst.State.PLAYING)
+
+    bus = pipeline.get_bus()
+    bus.poll(Gst.MessageType.EOS, Gst.CLOCK_TIME_NONE)
+    pipeline.set_state(Gst.State.NULL)
 
     output.run_pipeline()
 
