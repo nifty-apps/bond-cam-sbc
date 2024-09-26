@@ -8,7 +8,6 @@ import subprocess
 import re
 import traceback
 from dotenv import load_dotenv
-from pyngrok import ngrok
 import NetworkManager
 from dbus import SystemBus, Interface
 import sys
@@ -42,15 +41,15 @@ load_dotenv()
 BITRATE = int(os.environ["BITRATE"])
 OUTPUT_WATCHDOG_TIMEOUT = int(os.environ["OUTPUT_WATCHDOG_TIMEOUT"])
 VIDEO_DURATION = int(os.environ["VIDEO_DURATION"])
-VIDEO_FOLDER = os.environ["VIDEO_FOLDER"]
 VIDEO_DEVICE1 = os.environ["VIDEO_DEVICE1"]
 VIDEO_DEVICE2 = os.environ["VIDEO_DEVICE2"]
 AUDIO_DEVICE = os.environ["AUDIO_DEVICE"]
 VIDEO_FRAMERATE1 = int(os.environ["VIDEO_FRAMERATE1"])
 VIDEO_FRAMERATE2 = int(os.environ["VIDEO_FRAMERATE2"])
 VIDEO_KEEP_HOURS = int(os.environ["VIDEO_KEEP_HOURS"])
-INTEGRATION_ENDPOINT = os.environ["INTEGRATION_ENDPOINT"]
-INTEGRATION_ENDPOINT_UPDATE = os.environ["INTEGRATION_ENDPOINT_UPDATE"]
+BACKEND_API = os.environ["BACKEND_API"]
+INTEGRATION_ENDPOINT = f"{BACKEND_API}/device/configure"
+INTEGRATION_ENDPOINT_UPDATE = f"{BACKEND_API}/device/update"
 CHECK_FILES_EVERY = int(os.environ["CHECK_FILES_EVERY"])#seconds - check and remove old files
 DO_LOCAL_OUTPUT = int(os.environ["DO_LOCAL_OUTPUT"])
 LOCAL_ENDPOINT1 = os.environ["LOCAL_ENDPOINT1"]
@@ -165,7 +164,7 @@ def remove_old_files(folder, extension, hours_delta):
 def cb_timeout(b):
     try:
         print('Started removing old files job')
-        num_removed=remove_old_files(current_global_settings['video_folder'], 'mp4', VIDEO_KEEP_HOURS)
+        num_removed=remove_old_files('mp4', VIDEO_KEEP_HOURS)
         print(f'Finished removing old files job, total {num_removed} files was removed')
     except Exception as ex:
         print(f'Exception at callback {str(ex)}')
@@ -282,7 +281,6 @@ def get_cameras_settings():
         if skip_cameras_val_parameter < 0:
             skip_cameras_val_parameter = 0
         global_settings = {'enable_ssh': req_data['data']['device']['enable_ssh'],
-                           'ngrok_authtoken': req_data['data']['device']['ngrokId'],
                            'skip_audio_val': skip_audio_val_parameter,
                            'skip_cameras_val': skip_cameras_val_parameter,
                            'video_output': req_data['data']['device']['settings']['video_output'],
@@ -366,49 +364,6 @@ def set_networks_priorities(connection_type, priority):
         if settings['connection']['type'] == connection_type:
             connection.SetAutoconnectPriority(priority)
 
-
-class NgrokTunnel():
-    def __init__(self):
-        self.is_ssh_launched = False
-        self.ssh_tunnel = None
-
-    def launch_ngrok(self, authtoken):
-        print(f'Launching ngrok ssh tunnel')
-        ngrok.set_auth_token(authtoken)
-        self.ssh_tunnel = ngrok.connect("22", "tcp")
-        l = self.ssh_tunnel.public_url[6:].split(':')
-        self.is_ssh_launched = True
-        self.ssh_address = f'ssh nifty@{l[0]} -p {l[1]}'
-        req3 = requests.put(INTEGRATION_ENDPOINT_UPDATE, data={"serial": serial, "ssh_address": self.ssh_address})
-        print(f'Received answer on PUT request: {req3}')
-        print(f'Ngrok launched with ssh address: {self.ssh_address}')
-
-    def get_current_ngrok_tunnel(self):
-        if self.ssh_tunnel:
-            l = self.ssh_tunnel.public_url[6:].split(':')
-            return f'ssh nifty@{l[0]} -p {l[1]}'
-        else:
-            return ''
-
-    def check_and_update_tunnel(self):
-        new_address = self.get_current_ngrok_tunnel()
-        if self.ssh_address != new_address:
-            print('Updating ngrok tunnel address')
-            req3 = requests.put(INTEGRATION_ENDPOINT_UPDATE, data={"serial": serial, "ssh_address":new_address})
-            print(f'Received answer on PUT request: {req3}')
-            self.ssh_address = new_address
-
-    def interrupt_ngrok(self):
-        print(f'Interrupting ngrok ssh tunnel')
-        ngrok.kill()
-        self.is_ssh_launched = False
-        self.ssh_tunnel = None
-        self.ssh_address = ''
-        req3 = requests.put(INTEGRATION_ENDPOINT_UPDATE, data={"serial": serial, "ssh_address": 'Ssh tunnel not active'})
-        print(f'Received answer on PUT request: {req3}')
-        return 'Ssh tunnel not active'
-
-
 class output_connector():
     def __init__(self, label, rtmp_path1, rtmp_path2, settings1, settings2, global_settings):
         print(f'Init output_connector "{label}" class')
@@ -432,7 +387,6 @@ class output_connector():
         self.settings1 = settings1
         self.settings2 = settings2
         self.global_settings = global_settings
-        self.ngrok_tunnel = NgrokTunnel()
 
         # if self.device1 and self.device2:
         #     self.num_devices = 2
@@ -554,7 +508,7 @@ class output_connector():
             self.source_bins[camera_num].set_state(Gst.State.NULL)
             self.pipeline.remove(self.source_bins[camera_num])
             self.source_bins[camera_num] = None
-        return True
+        return True 
 
     def modify_settings(self, settings1, settings2):
         print(f'Using new settings for camera1: {settings1} and camera2: {settings2}')
@@ -579,12 +533,6 @@ class output_connector():
 
     def modify_device_settings(self, global_settings):
         print(f'Using new global settings for device: {global_settings}')
-
-        #Process enable_ssh:
-        if global_settings['enable_ssh'] and not self.ngrok_tunnel.is_ssh_launched:
-            self.ngrok_tunnel.launch_ngrok(global_settings['ngrok_authtoken'])
-        elif not global_settings['enable_ssh'] and self.ngrok_tunnel.is_ssh_launched:
-            self.ngrok_tunnel.interrupt_ngrok()
 
         #Process skip_audio_val:
         #Process skip_cameras_val:
@@ -740,14 +688,12 @@ def main(args):
     win.show_all()
 
     wait_for_streaming = True
-    ngrok_tunnel = NgrokTunnel()
     while wait_for_streaming:
         if not DO_LOCAL_OUTPUT:
             try:
                 req3 = requests.post(INTEGRATION_ENDPOINT, data={"serial": serial})
-                # print(f'Received: {req3}')
                 req_data = req3.json()
-                #print(f'Json received: {req_data}')
+                print('------req_data',req_data)
                 if req_data['data']['channels'] == []:
                     channelsProvided = False
                 else:
@@ -768,17 +714,13 @@ def main(args):
                 if skip_cameras_val_parameter < 0:
                     skip_cameras_val_parameter = 0
                 global_settings = {'enable_ssh': req_data['data']['device']['enable_ssh'],
-                                   'ngrok_authtoken': req_data['data']['device']['ngrokId'],
+                                #    'ngrok_authtoken': req_data['data']['device']['ngrokId'],
                                    'skip_audio_val': skip_audio_val_parameter,
                                    'skip_cameras_val': skip_cameras_val_parameter,
                                    'video_output': req_data['data']['device']['settings']['video_output'],
                                    'is_reserve': req_data['data']['device']['is_reserve']}
                 wifi_settings = req_data['data']['device']['wifi_settings']
 
-                if not ngrok_tunnel.is_ssh_launched and global_settings['enable_ssh']:
-                    ngrok_tunnel.launch_ngrok(global_settings['ngrok_authtoken'])
-                if ngrok_tunnel.is_ssh_launched and not global_settings['enable_ssh']:
-                    ngrok_tunnel.interrupt_ngrok()
 
             except Exception as e:
                 exc_type, exc_obj, exc_tb = sys.exc_info()
@@ -796,7 +738,6 @@ def main(args):
             global_settings = {'enable_ssh': False,
                                'skip_audio_val': SKIP_AUDIO_VALUE,
                                'skip_cameras_val': SKIP_CAMERAS_VALUE,
-                               'video_output': VIDEO_FOLDER,
                                'is_reserve': False}
             playbackUrl1 = ''
             playbackUrl2 = ''
@@ -806,8 +747,6 @@ def main(args):
 
     print("We're asked to stream, launching it")
 
-    if ngrok_tunnel.is_ssh_launched:
-        ngrok_tunnel.interrupt_ngrok()
 
     print(f'Streaming to endpoints: {streaming_address1}, {streaming_address2}')
     print(f'Playback URL: {playbackUrl1}, {playbackUrl2}')
@@ -829,16 +768,12 @@ def main(args):
     else:
         device_slot = [VIDEO_DEVICE1, VIDEO_DEVICE2]
         output=output_connector('output', streaming_address1, streaming_address2, current_settings1, current_settings2, current_global_settings)
-    print("------------------------------------------------")
     # else:
     #     print('Unhandled case occured, exiting...')
 
     GLib.timeout_add_seconds(CHECK_FILES_EVERY, cb_timeout, None)
-    print("------------------------------------------------")
     GLib.timeout_add_seconds(CHECK_USB_EVERY, cb_check_usb, output)
-    print("-------------------------------------------------")
     GLib.timeout_add_seconds(CHECK_SETTINGS_EVERY, cb_check_settings, None)
-    print("--------------------------------------------------")
 
     Gtk.main()
 
