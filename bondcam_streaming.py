@@ -17,6 +17,25 @@ gi.require_version('Gtk', '3.0')
 gi.require_version('Gst', '1.0')
 from gi.repository import GLib, Gst, Gtk
 
+# Define global variables to avoid the NameError
+BITRATE=0
+OUTPUT_WATCHDOG_TIMEOUT=0
+VIDEO_DURATION=0
+VIDEO_KEEP_HOURS=None
+CHECK_FILES_EVERY=None
+VIDEO_FRAMERATE1=None
+VIDEO_FRAMERATE2=None
+VIDEO_DEVICE1=None
+VIDEO_DEVICE2= None
+AUDIO_DEVICE=None
+DO_LOCAL_OUTPUT=0
+AUTO_DETECT_USB_PORTS=None
+CHECK_USB_EVERY=None
+CHECK_SETTINGS_EVERY=None
+SKIP_CAMERAS_VALUE=0
+AUTO_DETECT_AUDIO=None
+SKIP_AUDIO_VALUE=0
+
 class MyWindow(Gtk.Window):
     def __init__(self):
         Gtk.Window.__init__(self, title="Timeout Example")
@@ -38,28 +57,90 @@ interface_connection = "org.freedesktop.NetworkManager.Settings.Connection"
 
 load_dotenv()
 
-BITRATE = int(os.environ["BITRATE"])
-OUTPUT_WATCHDOG_TIMEOUT = int(os.environ["OUTPUT_WATCHDOG_TIMEOUT"])
-VIDEO_DURATION = int(os.environ["VIDEO_DURATION"])
-VIDEO_DEVICE1 = os.environ["VIDEO_DEVICE1"]
-VIDEO_DEVICE2 = os.environ["VIDEO_DEVICE2"]
-AUDIO_DEVICE = os.environ["AUDIO_DEVICE"]
-VIDEO_FRAMERATE1 = int(os.environ["VIDEO_FRAMERATE1"])
-VIDEO_FRAMERATE2 = int(os.environ["VIDEO_FRAMERATE2"])
-VIDEO_KEEP_HOURS = int(os.environ["VIDEO_KEEP_HOURS"])
+def get_serial_number():
+    """Fetches the CPU serial number."""
+    cmd_cpuinfo = "cat /proc/cpuinfo | grep Serial"
+    result = subprocess.run(["bash", "-c", cmd_cpuinfo], stdout=subprocess.PIPE)
+    serial_raw = result.stdout.decode('utf-8').split(' ')[-1]
+    return re.sub(r"[\n\t\s]*", "", serial_raw)
+
+serial = get_serial_number()
+
+# Keep the API URL in the .env or configuration file
 BACKEND_API = os.environ["BACKEND_API"]
+
+# API Endpoints
 INTEGRATION_ENDPOINT = f"{BACKEND_API}/device/configure"
 INTEGRATION_ENDPOINT_UPDATE = f"{BACKEND_API}/device/update"
-CHECK_FILES_EVERY = int(os.environ["CHECK_FILES_EVERY"])#seconds - check and remove old files
-DO_LOCAL_OUTPUT = int(os.environ["DO_LOCAL_OUTPUT"])
-LOCAL_ENDPOINT1 = os.environ["LOCAL_ENDPOINT1"]
-LOCAL_ENDPOINT2 = os.environ["LOCAL_ENDPOINT2"]
-AUTO_DETECT_USB_PORTS = int(os.environ["AUTO_DETECT_USB_PORTS"])
-CHECK_USB_EVERY = int(os.environ["CHECK_USB_EVERY"])#seconds - check usb cameras
-CHECK_SETTINGS_EVERY = int(os.environ["CHECK_SETTINGS_EVERY"])#seconds - check settings for cameras by API
-SKIP_CAMERAS_VALUE = int(os.environ["SKIP_CAMERAS_VALUE"])
-AUTO_DETECT_AUDIO = int(os.environ["AUTO_DETECT_AUDIO"])
-SKIP_AUDIO_VALUE = int(os.environ["SKIP_AUDIO_VALUE"])
+CONFIGURE_API = f"{BACKEND_API}/settings"
+
+# Fetch configuration from INTEGRATION_ENDPOINT API (requires serial)
+def fetch_integration_config(serial):
+    try:
+        response = requests.post(INTEGRATION_ENDPOINT, data={"serial": serial})
+        response.raise_for_status()  # Raise an error for bad responses (4xx, 5xx)
+        config_data = response.json().get('data', {}).get('device', {}).get('settings', {})
+        return config_data
+    except requests.exceptions.RequestException as e:
+        print(f"Error fetching integration config: {e}")
+        return None
+
+# Fetch additional configuration from CONFIGURE_API (no serial required)
+def fetch_configure_api():
+    try:
+        response = requests.get(CONFIGURE_API)
+        response.raise_for_status()
+        config_data = response.json().get('data', {})
+        return config_data
+    except requests.exceptions.RequestException as e:
+        print(f"Error fetching configuration API data: {e}")
+        return None
+
+# Fetch values directly from the Integration API (for specific settings)
+def fetch_integration_values(serial):
+    integration_config = fetch_integration_config(serial)
+    
+    if integration_config:
+        BITRATE = integration_config['default_bitrate']
+        OUTPUT_WATCHDOG_TIMEOUT = integration_config['output_watchdog_timeout']
+        VIDEO_DURATION = integration_config['video_duration']
+        VIDEO_FOLDER = integration_config['video_output']
+        SKIP_AUDIO_VALUE = integration_config['skip_audio_value']
+
+def fetch_configure_api():
+    try:
+        response = requests.get(CONFIGURE_API)
+        response.raise_for_status()
+        config_data = response.json()  # Assuming the data you provided is within the JSON response
+        return config_data
+    except requests.exceptions.RequestException as e:
+        print(f"Error fetching configuration API data: {e}")
+        return None
+
+# Fetch values from the Configuration API and assign them to global variables
+configure_api_data = fetch_configure_api()
+
+if configure_api_data:
+    # Assigning values to global variables based on the response fields
+    DEFAULT_PASSWORD = configure_api_data['defaultPassword']
+    DEFAULT_SSID = configure_api_data['defaultSsid']
+    AUDIO_DEVICE = configure_api_data['audioDevice']
+    VIDEO_DEVICE1 = configure_api_data['videoDevice1']
+    VIDEO_DEVICE2 = configure_api_data['videoDevice2']
+    AUTO_DETECT_AUDIO = configure_api_data['autoDetectAudio']
+    CHECK_FILES_EVERY = configure_api_data['checkFilesEvery']
+    CHECK_SETTINGS_EVERY = configure_api_data['checkSettingsEvery']
+    CHECK_USB_EVERY = configure_api_data['checkUsbEvery']
+    DO_LOCAL_OUTPUT = configure_api_data['doLocalOutput']
+    SKIP_CAMERAS_VALUE = configure_api_data['skipCamerasValue']
+    VIDEO_FRAMERATE1 = configure_api_data['videoFrameRate1']
+    VIDEO_FRAMERATE2 = configure_api_data['videoFrameRate2']
+    VIDEO_KEEP_HOURS = configure_api_data['videoKeepHours']
+    AUTO_DETECT_USB_PORTS = configure_api_data['autoDetectUsbPorts']
+
+# Fetch values from Integration API
+fetch_integration_values(serial)
+
 
 os.environ["GST_DEBUG"] = '2,flvmux:1'
 
@@ -77,12 +158,6 @@ serial = None
 skip_audio_val=0
 skip_cameras_val=0
 
-def get_serial_number():
-    """Fetches the CPU serial number."""
-    cmd_cpuinfo = "cat /proc/cpuinfo | grep Serial"
-    result = subprocess.run(["bash", "-c", cmd_cpuinfo], stdout=subprocess.PIPE)
-    serial_raw = result.stdout.decode('utf-8').split(' ')[-1]
-    return re.sub(r"[\n\t\s]*", "", serial_raw)
 
 def configure_network_priorities():
     """Configures network priorities for various network types."""
@@ -693,7 +768,6 @@ def main(args):
             try:
                 req3 = requests.post(INTEGRATION_ENDPOINT, data={"serial": serial})
                 req_data = req3.json()
-                print('------req_data',req_data)
                 if req_data['data']['channels'] == []:
                     channelsProvided = False
                 else:
