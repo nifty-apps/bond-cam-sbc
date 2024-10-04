@@ -17,14 +17,12 @@ gi.require_version('Gtk', '3.0')
 gi.require_version('Gst', '1.0')
 from gi.repository import GLib, Gst, Gtk
 
+
 # Define global variables to avoid the NameError
 BITRATE=0
 OUTPUT_WATCHDOG_TIMEOUT=0
 VIDEO_DURATION=0
-VIDEO_KEEP_HOURS=None
 CHECK_FILES_EVERY=None
-VIDEO_FRAMERATE1=None
-VIDEO_FRAMERATE2=None
 VIDEO_DEVICE1=None
 VIDEO_DEVICE2= None
 AUDIO_DEVICE=None
@@ -122,8 +120,6 @@ configure_api_data = fetch_configure_api()
 
 if configure_api_data:
     # Assigning values to global variables based on the response fields
-    DEFAULT_PASSWORD = configure_api_data['defaultPassword']
-    DEFAULT_SSID = configure_api_data['defaultSsid']
     AUDIO_DEVICE = configure_api_data['audioDevice']
     VIDEO_DEVICE1 = configure_api_data['videoDevice1']
     VIDEO_DEVICE2 = configure_api_data['videoDevice2']
@@ -131,15 +127,11 @@ if configure_api_data:
     CHECK_FILES_EVERY = configure_api_data['checkFilesEvery']
     CHECK_SETTINGS_EVERY = configure_api_data['checkSettingsEvery']
     CHECK_USB_EVERY = configure_api_data['checkUsbEvery']
-    DO_LOCAL_OUTPUT = configure_api_data['doLocalOutput']
     SKIP_CAMERAS_VALUE = configure_api_data['skipCamerasValue']
-    VIDEO_FRAMERATE1 = configure_api_data['videoFrameRate1']
-    VIDEO_FRAMERATE2 = configure_api_data['videoFrameRate2']
-    VIDEO_KEEP_HOURS = configure_api_data['videoKeepHours']
     AUTO_DETECT_USB_PORTS = configure_api_data['autoDetectUsbPorts']
 
 # Fetch values from Integration API
-fetch_integration_values(serial)
+# fetch_integration_values(serial)
 
 
 os.environ["GST_DEBUG"] = '2,flvmux:1'
@@ -493,7 +485,7 @@ class output_connector():
             time.sleep(5)
             print(f'End of calling async pipeline destruction for output_connector class "{self.label}"')
 
-        rtmp_output_element = 'rtmpsink' if DO_LOCAL_OUTPUT else 'rtmp2sink'
+        rtmp_output_element = 'rtmp2sink'
 
         print(f'==================Creating a new pipeline=====================\n')
         if self.with_audio:
@@ -501,11 +493,11 @@ class output_connector():
         else:
             audio_input = f'audiotestsrc is-live=1 wave=silence ! audioresample ! audio/x-raw,rate=48000 ! voaacenc bitrate=96000 ! audio/mpeg ! aacparse ! audio/mpeg, mpegversion=4'
 
-        gcommand = f"""videotestsrc pattern=0 is-live=1 ! videoconvert ! video/x-raw,width=1920,height=1080,framerate={VIDEO_FRAMERATE1}/1 !  source_compositor1.sink_0    
+        gcommand = f"""videotestsrc pattern=0 is-live=1 ! videoconvert ! video/x-raw,width=1920,height=1080!  source_compositor1.sink_0    
             input-selector name=source_compositor1 sync-mode=1 ! videoconvert ! video/x-raw,format=NV12 !  
             mpph264enc name=encoder1 profile=main qos=1 header-mode=1 profile=main bps={BITRATE} bps-max={BITRATE + 1000000} rc-mode=vbr ! video/x-h264,level=(string)4 ! h264parse config-interval=1 ! tee name=tee1_{self.label} ! 
             queue ! flvmux name=mux streamable=1 ! watchdog timeout={self.watchdog_timeout} ! {rtmp_output_element} sync=0 name=rtmpsink1{self.label} location=\"{self.rtmp_path1}\"
-             videotestsrc pattern=0 is-live=1 ! videoconvert ! video/x-raw,width=1920,height=1080,framerate={VIDEO_FRAMERATE2}/1 ! source_compositor2.sink_0 
+             videotestsrc pattern=0 is-live=1 ! videoconvert ! video/x-raw,width=1920,height=1080! source_compositor2.sink_0 
             input-selector name=source_compositor2 sync-mode=1 ! videoconvert ! video/x-raw,format=NV12 !  
             mpph264enc name=encoder2 profile=main qos=1 header-mode=1 profile=main bps={BITRATE} bps-max={BITRATE + 1000000} rc-mode=vbr ! video/x-h264,level=(string)4 ! h264parse config-interval=1 ! tee name=tee2_{self.label} ! 
             queue ! flvmux name=mux2 streamable=1 ! watchdog timeout={self.watchdog_timeout} ! {rtmp_output_element} sync=0 name=rtmpsink2{self.label} location=\"{self.rtmp_path2}\"
@@ -626,17 +618,17 @@ class output_connector():
         self.global_settings = global_settings
 
 
-    # def format_location_callback1(self, splitmux, fragment_id):
-    #     now = datetime.now()
-    #     file_path=f'{self.save_path}stream1_{now.isoformat()}.mp4'
-    #     print(f'Stream 1 is starting to record into a new videofile {file_path}')
-    #     return file_path
+    def format_location_callback1(self, splitmux, fragment_id):
+        now = datetime.now()
+        file_path=f'{self.save_path}stream1_{now.isoformat()}.mp4'
+        print(f'Stream 1 is starting to record into a new videofile {file_path}')
+        return file_path
 
-    # def format_location_callback2(self, splitmux, fragment_id):
-    #     now = datetime.now()
-    #     file_path=f'{self.save_path}stream2_{now.isoformat()}.mp4'
-    #     print(f'Stream 2 is starting to record into a new videofile {file_path}')
-    #     return file_path
+    def format_location_callback2(self, splitmux, fragment_id):
+        now = datetime.now()
+        file_path=f'{self.save_path}stream2_{now.isoformat()}.mp4'
+        print(f'Stream 2 is starting to record into a new videofile {file_path}')
+        return file_path
 
     def get_label(self):
         return self.label
@@ -743,24 +735,18 @@ class output_connector():
             self.pipeline=None
 
 def main(args):
-    global device_slot
-    global current_settings1, current_settings2, current_global_settings, current_wifi_settings
-    global output
-    global serial
+    global device_slot, current_settings1, current_settings2
+    global current_global_settings, current_wifi_settings, output, serial
 
+    # Initialize GStreamer
     Gst.init(None)
-    
     serial = get_serial_number()
     configure_network_priorities()
 
-    # Correctly pass the argument in a tuple (use a comma after the number)
+    # Start the thread to check settings periodically
     thread = threading.Thread(target=run_periodically, args=(CHECK_SETTINGS_EVERY,))
     thread.daemon = True
     thread.start()
-
-    win = MyWindow()
-    win.connect("destroy", Gtk.main_quit)
-    win.show_all()
 
     wait_for_streaming = True
     while wait_for_streaming:
@@ -768,33 +754,43 @@ def main(args):
             try:
                 req3 = requests.post(INTEGRATION_ENDPOINT, data={"serial": serial})
                 req_data = req3.json()
-                if req_data['data']['channels'] == []:
+                print('req_data', req_data['data']['device']['channels'])
+
+                # Check for channel data in the response
+                channels_data = req_data['data']['device'].get('channels')
+                if channels_data is None:
                     channelsProvided = False
                 else:
                     channelsProvided = True
-                    endpoint1, key1, playbackUrl1 = req_data['data']['channels'][0]['ingestEndpoint'], req_data['data']['channels'][0]['streamKey'], req_data['data']['channels'][0]['playbackUrl']
-                    endpoint2, key2, playbackUrl2 = req_data['data']['channels'][1]['ingestEndpoint'], req_data['data']['channels'][1]['streamKey'], req_data['data']['channels'][1]['playbackUrl']
-                    streaming_address1 = endpoint1 + key1
-                    streaming_address2 = endpoint2 + key2
-                    settings1 = {'bitrate': req_data['data']['channels'][0]['bitrate']*1000, 'white_balance': req_data['data']['channels'][0]['whiteBalance']}
-                    settings2 = {'bitrate': req_data['data']['channels'][1]['bitrate']*1000, 'white_balance': req_data['data']['channels'][1]['whiteBalance']}
-                skip_audio_val_parameter = req_data['data']['device']['settings']['skip_audio_value']
-                if skip_audio_val_parameter < 0:
-                    skip_audio_val_parameter = 0
-                if 'skip_cameras_val' in req_data['data']['device']['settings'].keys():
-                    skip_cameras_val_parameter = req_data['data']['device']['settings']['skip_cameras_val']
-                else:
-                    skip_cameras_val_parameter = SKIP_CAMERAS_VALUE
-                if skip_cameras_val_parameter < 0:
-                    skip_cameras_val_parameter = 0
-                global_settings = {'enable_ssh': req_data['data']['device']['enable_ssh'],
-                                #    'ngrok_authtoken': req_data['data']['device']['ngrokId'],
-                                   'skip_audio_val': skip_audio_val_parameter,
-                                   'skip_cameras_val': skip_cameras_val_parameter,
-                                   'video_output': req_data['data']['device']['settings']['video_output'],
-                                   'is_reserve': req_data['data']['device']['is_reserve']}
-                wifi_settings = req_data['data']['device']['wifi_settings']
+                    # Ensure complete RTMP URLs
+                    endpoint1 = channels_data['camera1']['ingestEndpoint']
+                    key1 = channels_data['camera1']['streamKey']
+                    playbackUrl1 = channels_data['camera1']['playbackUrl']
+                    endpoint2 = channels_data['camera2']['ingestEndpoint']
+                    key2 = channels_data['camera2']['streamKey']
+                    playbackUrl2 = channels_data['camera2']['playbackUrl']
+                    
+                    streaming_address1 = f"{endpoint1}/{key1}"
+                    streaming_address2 = f"{endpoint2}/{key2}"
 
+                    # Set camera settings
+                    settings1 = {'bitrate': channels_data['camera1']['bitrate'] * 1000, 
+                                 'white_balance': channels_data['camera1']['whiteBalance']}
+                    settings2 = {'bitrate': channels_data['camera2']['bitrate'] * 1000, 
+                                 'white_balance': channels_data['camera2']['whiteBalance']}
+
+                # Set global settings and wifi settings
+                skip_audio_val_parameter = max(0, req_data['data']['device']['settings'].get('skip_audio_value', 0))
+                skip_cameras_val_parameter = max(0, req_data['data']['device']['settings'].get('skip_cameras_val', SKIP_CAMERAS_VALUE))
+
+                global_settings = {
+                    'enable_ssh': req_data['data']['device']['enable_ssh'],
+                    'skip_audio_val': skip_audio_val_parameter,
+                    'skip_cameras_val': skip_cameras_val_parameter,
+                    'video_output': req_data['data']['device']['settings']['video_output'],
+                    'is_reserve': req_data['data']['device']['is_reserve']
+                }
+                wifi_settings = req_data['data']['device']['wifi_settings']
 
             except Exception as e:
                 exc_type, exc_obj, exc_tb = sys.exc_info()
@@ -803,61 +799,53 @@ def main(args):
                 print(f"An error occurred in file '{fname}' at line {line_num}: {e}")
                 traceback.print_exc()
                 return 1
-        else:
-            channelsProvided = True
-            streaming_address1 = LOCAL_ENDPOINT1
-            streaming_address2 = LOCAL_ENDPOINT2
-            settings1 = {'bitrate': BITRATE, 'white_balance': 6500}
-            settings2 = {'bitrate': BITRATE, 'white_balance': 6500}
-            global_settings = {'enable_ssh': False,
-                               'skip_audio_val': SKIP_AUDIO_VALUE,
-                               'skip_cameras_val': SKIP_CAMERAS_VALUE,
-                               'is_reserve': False}
-            playbackUrl1 = ''
-            playbackUrl2 = ''
-            wifi_settings = []
+        # else:
+        #     channelsProvided = True
+        #     streaming_address1 = LOCAL_ENDPOINT1
+        #     streaming_address2 = LOCAL_ENDPOINT2
+        #     settings1 = {'bitrate': BITRATE, 'white_balance': 6500}
+        #     settings2 = {'bitrate': BITRATE, 'white_balance': 6500}
+        #     global_settings = {
+        #         'enable_ssh': False,
+        #         'skip_audio_val': SKIP_AUDIO_VALUE,
+        #         'skip_cameras_val': SKIP_CAMERAS_VALUE,
+        #         'is_reserve': False,
+        #         'video_output': "videos"
+        #     }
+        #     playbackUrl1 = ''
+        #     playbackUrl2 = ''
+        #     wifi_settings = []
+
+        # Update wait condition
         time.sleep(1)
         wait_for_streaming = global_settings['is_reserve'] or not channelsProvided
 
     print("We're asked to stream, launching it")
-
-
     print(f'Streaming to endpoints: {streaming_address1}, {streaming_address2}')
     print(f'Playback URL: {playbackUrl1}, {playbackUrl2}')
 
+    # Assign global settings
     current_settings1 = settings1
     current_settings2 = settings2
     current_global_settings = global_settings
     current_wifi_settings = wifi_settings
 
-
-    # if AUTO_DETECT_USB_PORTS and (d_counter >= 2):
-    #     output=output_connector('output', streaming_address1, streaming_address2, l_devices[-2], l_devices[-1], current_settings1, current_settings2, current_global_settings)
-    # elif AUTO_DETECT_USB_PORTS and (d_counter >= 1):
-    #     output = output_connector('output', streaming_address1, streaming_address2, l_devices[-1], None, current_settings1, current_settings2, current_global_settings)
-    # elif AUTO_DETECT_USB_PORTS and (d_counter == 0):
-    #     output=output_connector('output', streaming_address1, streaming_address2, None, None, current_settings1, current_settings2, current_global_settings)
+    # Output configuration
     if AUTO_DETECT_USB_PORTS:
-         output=output_connector('output', streaming_address1, streaming_address2, current_settings1, current_settings2, current_global_settings)
+        output = output_connector('output', streaming_address1, streaming_address2, current_settings1, current_settings2, current_global_settings)
     else:
         device_slot = [VIDEO_DEVICE1, VIDEO_DEVICE2]
-        output=output_connector('output', streaming_address1, streaming_address2, current_settings1, current_settings2, current_global_settings)
-    # else:
-    #     print('Unhandled case occured, exiting...')
+        output = output_connector('output', streaming_address1, streaming_address2, current_settings1, current_settings2, current_global_settings)
 
+    # Start periodic checks
     GLib.timeout_add_seconds(CHECK_FILES_EVERY, cb_timeout, None)
     GLib.timeout_add_seconds(CHECK_USB_EVERY, cb_check_usb, output)
     GLib.timeout_add_seconds(CHECK_SETTINGS_EVERY, cb_check_settings, None)
 
+    # Initialize the main GTK loop
     Gtk.main()
 
-    pipeline = Gst.parse_launch("videotestsrc ! x264enc ! splitmuxsink location=/path/to/output/file-%05d.mp4")
-    pipeline.set_state(Gst.State.PLAYING)
-
-    bus = pipeline.get_bus()
-    bus.poll(Gst.MessageType.EOS, Gst.CLOCK_TIME_NONE)
-    pipeline.set_state(Gst.State.NULL)
-
+    # Run GStreamer pipeline
     output.run_pipeline()
 
 if __name__ == '__main__':
