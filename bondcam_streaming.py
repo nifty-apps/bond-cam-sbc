@@ -17,11 +17,13 @@ gi.require_version('Gtk', '3.0')
 gi.require_version('Gst', '1.0')
 from gi.repository import GLib, Gst, Gtk
 
-
-# Define global variables to avoid the NameError
 BITRATE=0
 OUTPUT_WATCHDOG_TIMEOUT=0
 VIDEO_DURATION=0
+
+VIDEO_FRAMERATE1=30
+VIDEO_FRAMERATE2=30
+
 CHECK_FILES_EVERY=None
 VIDEO_DEVICE1=None
 VIDEO_DEVICE2= None
@@ -102,7 +104,7 @@ def fetch_integration_values(serial):
         BITRATE = integration_config['default_bitrate']
         OUTPUT_WATCHDOG_TIMEOUT = integration_config['output_watchdog_timeout']
         VIDEO_DURATION = integration_config['video_duration']
-        VIDEO_FOLDER = integration_config['video_output']
+        # VIDEO_FOLDER = integration_config['video_output']
         SKIP_AUDIO_VALUE = integration_config['skip_audio_value']
 
 def fetch_configure_api():
@@ -162,9 +164,7 @@ def configure_network_priorities():
 
 def modify_wifi_settings(wifi_settings, serial):
         for w in wifi_settings:
-            ssid, password = w['ssid'], w['password']      
-            print(ssid, 'ssid')
-            print('password', password, )
+            ssid, password = w['ssid'], w['password']
             check_cmd = f"nmcli -g NAME connection show | grep -w '{ssid}'"
             check_state_cmd = f"nmcli -g GENERAL.STATE connection show '{ssid}'"
             modify_cmd = f"sudo nmcli connection modify '{ssid}' wifi-sec.key-mgmt wpa-psk wifi-sec.psk '{password}'"
@@ -183,7 +183,6 @@ def modify_wifi_settings(wifi_settings, serial):
 
         current_timestamp = datetime.utcnow().isoformat()
         req3 = requests.put(INTEGRATION_ENDPOINT_UPDATE, data={"serial": serial, "doResetWifi": False, "wifiSettingsUpdatedAt": current_timestamp})
-        print(f'Received response: {req3.text}')
 
 def check_and_modify_wifi_settings():
     try:
@@ -192,10 +191,8 @@ def check_and_modify_wifi_settings():
         req3 = requests.post(INTEGRATION_ENDPOINT, data={"serial": serial})
         req_data = req3.json()
         wifi_settings = req_data['data']['device']['wifi_settings']
-        print('wifi_settings:', wifi_settings)
 
         do_reset_wifi = req_data['data']['device'].get('doResetWifi', False)
-        print('do_reset_wifi:', do_reset_wifi)
 
         # Check if doResetWifi is true before modifying the wifi settings
         if do_reset_wifi:
@@ -206,37 +203,10 @@ def check_and_modify_wifi_settings():
     except Exception as e:
         print(f"An error occurred: {e}")
 
-def run_periodically(CHECK_SETTINGS_EVERY):
-    while True:
-        check_and_modify_wifi_settings()
-        time.sleep(CHECK_SETTINGS_EVERY)
-
-def remove_old_files(folder, extension, hours_delta):
-    now = datetime.now()
-    files_to_by_extension = [path.join(folder, f) for f in listdir(folder) if
-                             f.endswith(extension)]
-    removed_files_counter = 0
-    for f in files_to_by_extension:
-        delta = now - datetime.fromtimestamp(path.getmtime(f))
-        if delta.seconds//3600 > hours_delta:
-            try:
-                remove(f)
-                print(f'File {f} was removed')
-                removed_files_counter += 1
-            except OSError:
-                print(f'Error occured, file {f} was not removed')
-                pass
-    return removed_files_counter
-
-def cb_timeout(b):
-    try:
-        print('Started removing old files job')
-        num_removed=remove_old_files('mp4', VIDEO_KEEP_HOURS)
-        print(f'Finished removing old files job, total {num_removed} files was removed')
-    except Exception as ex:
-        print(f'Exception at callback {str(ex)}')
-        return True
-    return True
+# def run_periodically(CHECK_SETTINGS_EVERY):
+#     while True:
+#         check_and_modify_wifi_settings()
+#         time.sleep(CHECK_SETTINGS_EVERY)
 
 
 def get_usb_devices():
@@ -296,11 +266,11 @@ def get_audio_devices():
 
 def cb_check_usb(output):
     try:
-        # print('Callback: performing USB check')
+        print('Callback: performing USB check')
         l_devices_new, d_counter_new = get_usb_devices()
         #Filling device slots:
         for device in l_devices_new:
-            # print(f'Checking device {device}. Device slot list is {device_slot}')
+            print(f'Checking device {device}. Device slot list is {device_slot}')
             if (device not in device_slot) and len(device_slot)<2:
                 print(f'Appending device {device} to slot list.')
                 device_slot.append(device)
@@ -331,9 +301,7 @@ def cb_check_usb(output):
 def get_cameras_settings():
     try:
         req3 = requests.post(INTEGRATION_ENDPOINT, data={"serial": serial})
-        # print(f'Received: {req3}')
         req_data = req3.json()
-        #print(f"ssh={req_data['data']['device']['enable_ssh']}")
         settings1 = {'bitrate': req_data['data']['channels'][0]['bitrate'] * 1000,
                      'white_balance': req_data['data']['channels'][0]['whiteBalance']}
         settings2 = {'bitrate': req_data['data']['channels'][1]['bitrate'] * 1000,
@@ -350,7 +318,7 @@ def get_cameras_settings():
         global_settings = {'enable_ssh': req_data['data']['device']['enable_ssh'],
                            'skip_audio_val': skip_audio_val_parameter,
                            'skip_cameras_val': skip_cameras_val_parameter,
-                           'video_output': req_data['data']['device']['settings']['video_output'],
+                        #    'video_output': req_data['data']['device']['settings']['video_output'],
                            'is_reserve': req_data['data']['device']['is_reserve']}
         wifi_settings = req_data['data']['device']['wifi_settings']
         do_renew_wifi = req_data['data']['device']['doResetWifi']
@@ -440,7 +408,7 @@ class output_connector():
         self.source_bin_strs = ['', '']
         self.compositors = []
         self.label=label
-        self.save_path=global_settings['video_output']
+        # self.save_path=global_settings['video_output']
         self.bitrate=BITRATE
         self.watchdog_timeout=OUTPUT_WATCHDOG_TIMEOUT
         self.rtmp_path1=rtmp_path1
@@ -497,16 +465,13 @@ class output_connector():
             input-selector name=source_compositor1 sync-mode=1 ! videoconvert ! video/x-raw,format=NV12 !  
             mpph264enc name=encoder1 profile=main qos=1 header-mode=1 profile=main bps={BITRATE} bps-max={BITRATE + 1000000} rc-mode=vbr ! video/x-h264,level=(string)4 ! h264parse config-interval=1 ! tee name=tee1_{self.label} ! 
             queue ! flvmux name=mux streamable=1 ! watchdog timeout={self.watchdog_timeout} ! {rtmp_output_element} sync=0 name=rtmpsink1{self.label} location=\"{self.rtmp_path1}\"
-             videotestsrc pattern=0 is-live=1 ! videoconvert ! video/x-raw,width=1920,height=1080! source_compositor2.sink_0 
+            
+            videotestsrc pattern=0 is-live=1 ! videoconvert ! video/x-raw,width=1920,height=1080! source_compositor2.sink_0 
             input-selector name=source_compositor2 sync-mode=1 ! videoconvert ! video/x-raw,format=NV12 !  
             mpph264enc name=encoder2 profile=main qos=1 header-mode=1 profile=main bps={BITRATE} bps-max={BITRATE + 1000000} rc-mode=vbr ! video/x-h264,level=(string)4 ! h264parse config-interval=1 ! tee name=tee2_{self.label} ! 
             queue ! flvmux name=mux2 streamable=1 ! watchdog timeout={self.watchdog_timeout} ! {rtmp_output_element} sync=0 name=rtmpsink2{self.label} location=\"{self.rtmp_path2}\"
             {audio_input} ! tee name=audiotee ! queue ! mux.
-            audiotee. !  queue ! mux2. 
-            tee1_{self.label}. ! queue !  
-            splitmuxsink name=splitmuxsink1{self.label} async-handling=1 message-forward=1 max-size-time={self.video_duration * 60 * 1000000000}
-            tee2_{self.label}. ! queue !  
-            splitmuxsink name=splitmuxsink2{self.label} async-handling=1 message-forward=1 max-size-time={self.video_duration * 60 * 1000000000}"""
+            audiotee. !  queue ! mux2."""
 
         print(f'Gstreamer pipeline: {gcommand}\n')
         self.pipeline = Gst.parse_launch(gcommand)
@@ -520,19 +485,13 @@ class output_connector():
         self.bus = self.pipeline.get_bus()
         self.bus.add_signal_watch()
 
-        self.bus.connect('message::eos', self.eos_callback)
-        self.bus.connect('message::error', self.error_callback)
-        self.bus.connect('message::state-changed', self.state_changed_callback)
-        self.bus.connect('message::info', self.on_info)
-        self.bus.connect('message::warning', self.on_warning)
-        self.bus.connect('message::stream_status', self.on_stream_status)
-        self.bus.connect('message::request_state', self.on_request_state)
-
-        # sink = self.pipeline.get_by_name(f'splitmuxsink1{self.label}')
-        # sink.connect('format-location', self.format_location_callback1)
-        # if self.num_devices == 2:
-        #     sink = self.pipeline.get_by_name(f'splitmuxsink2{self.label}')
-        #     sink.connect('format-location', self.format_location_callback2)
+        # self.bus.connect('message::eos', self.eos_callback)
+        # self.bus.connect('message::error', self.error_callback)
+        # self.bus.connect('message::state-changed', self.state_changed_callback)
+        # self.bus.connect('message::info', self.on_info)
+        # self.bus.connect('message::warning', self.on_warning)
+        # self.bus.connect('message::stream_status', self.on_stream_status)
+        # self.bus.connect('message::request_state', self.on_request_state)
 
         self.pipeline.set_state(Gst.State.PLAYING)
         self.modify_settings(self.settings1, self.settings2)
@@ -605,8 +564,9 @@ class output_connector():
         #Process skip_cameras_val:
         #Process video_output:
         if ((self.global_settings['skip_audio_val'] != current_global_settings['skip_audio_val']) or
-           (self.global_settings['skip_cameras_val'] != current_global_settings['skip_cameras_val']) or
-           (self.global_settings['video_output'] != current_global_settings['video_output'])):
+           (self.global_settings['skip_cameras_val'] != current_global_settings['skip_cameras_val'])):
+        #    (self.global_settings['video_output'] != current_global_settings['video_output'])
+    
             print('skip_audio_val or skip_cameras_val or video_output has been changed, relaunching to enable')
             exit(4)
 
@@ -743,10 +703,10 @@ def main(args):
     serial = get_serial_number()
     configure_network_priorities()
 
-    # Start the thread to check settings periodically
-    thread = threading.Thread(target=run_periodically, args=(CHECK_SETTINGS_EVERY,))
-    thread.daemon = True
-    thread.start()
+    # # Start the thread to check settings periodically
+    # thread = threading.Thread(target=run_periodically, args=(CHECK_SETTINGS_EVERY,))
+    # thread.daemon = True
+    # thread.start()
 
     wait_for_streaming = True
     while wait_for_streaming:
@@ -754,7 +714,6 @@ def main(args):
             try:
                 req3 = requests.post(INTEGRATION_ENDPOINT, data={"serial": serial})
                 req_data = req3.json()
-                print('req_data', req_data['data']['device']['channels'])
 
                 # Check for channel data in the response
                 channels_data = req_data['data']['device'].get('channels')
@@ -787,7 +746,7 @@ def main(args):
                     'enable_ssh': req_data['data']['device']['enable_ssh'],
                     'skip_audio_val': skip_audio_val_parameter,
                     'skip_cameras_val': skip_cameras_val_parameter,
-                    'video_output': req_data['data']['device']['settings']['video_output'],
+                    # 'video_output': req_data['data']['device']['settings']['video_output'],
                     'is_reserve': req_data['data']['device']['is_reserve']
                 }
                 wifi_settings = req_data['data']['device']['wifi_settings']
@@ -838,7 +797,6 @@ def main(args):
         output = output_connector('output', streaming_address1, streaming_address2, current_settings1, current_settings2, current_global_settings)
 
     # Start periodic checks
-    GLib.timeout_add_seconds(CHECK_FILES_EVERY, cb_timeout, None)
     GLib.timeout_add_seconds(CHECK_USB_EVERY, cb_check_usb, output)
     GLib.timeout_add_seconds(CHECK_SETTINGS_EVERY, cb_check_settings, None)
 
