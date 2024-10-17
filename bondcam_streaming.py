@@ -561,9 +561,9 @@ class output_connector():
         print(f'Using new global settings for device: {global_settings}')
 
         #Process skip_audio_val:
+        #Process skip_cameras_val:
         if ((self.global_settings['skip_audio_val'] != current_global_settings['skip_audio_val']) or
            (self.global_settings['skip_cameras_val'] != current_global_settings['skip_cameras_val'])):
-        #Process skip_cameras_val:
         #Process video_output:
         #    (self.global_settings['video_output'] != current_global_settings['video_output'])
     
