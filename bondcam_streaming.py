@@ -302,10 +302,10 @@ def get_cameras_settings():
     try:
         req3 = requests.post(INTEGRATION_ENDPOINT, data={"serial": serial})
         req_data = req3.json()
-        settings1 = {'bitrate': req_data['data']['channels'][0]['bitrate'] * 1000,
-                     'white_balance': req_data['data']['channels'][0]['whiteBalance']}
-        settings2 = {'bitrate': req_data['data']['channels'][1]['bitrate'] * 1000,
-                     'white_balance': req_data['data']['channels'][1]['whiteBalance']}
+        settings1 = {'bitrate': req_data['data']['channels']['camera1']['bitrate'] * 1000,
+                     'white_balance': req_data['data']['channels']['camera1']['whiteBalance']}
+        settings2 = {'bitrate': req_data['data']['channels']['camera2']['bitrate'] * 1000,
+                     'white_balance': req_data['data']['channels']['camera2']['whiteBalance']}
         skip_audio_val_parameter = req_data['data']['device']['settings']['skip_audio_value']
         if skip_audio_val_parameter < 0:
             skip_audio_val_parameter = 0
@@ -561,10 +561,10 @@ class output_connector():
         print(f'Using new global settings for device: {global_settings}')
 
         #Process skip_audio_val:
-        #Process skip_cameras_val:
-        #Process video_output:
         if ((self.global_settings['skip_audio_val'] != current_global_settings['skip_audio_val']) or
            (self.global_settings['skip_cameras_val'] != current_global_settings['skip_cameras_val'])):
+        #Process skip_cameras_val:
+        #Process video_output:
         #    (self.global_settings['video_output'] != current_global_settings['video_output'])
     
             print('skip_audio_val or skip_cameras_val or video_output has been changed, relaunching to enable')
