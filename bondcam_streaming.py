@@ -20,21 +20,18 @@ from gi.repository import GLib, Gst, Gtk
 BITRATE=0
 OUTPUT_WATCHDOG_TIMEOUT=0
 VIDEO_DURATION=0
-
 VIDEO_FRAMERATE1=30
 VIDEO_FRAMERATE2=30
-
 CHECK_FILES_EVERY=None
 VIDEO_DEVICE1=None
 VIDEO_DEVICE2= None
 AUDIO_DEVICE=None
 DO_LOCAL_OUTPUT=0
-AUTO_DETECT_USB_PORTS=None
+AUTO_DETECT_USB_PORTS=0
 CHECK_USB_EVERY=None
 CHECK_SETTINGS_EVERY=None
 SKIP_CAMERAS_VALUE=0
-AUTO_DETECT_AUDIO=None
-SKIP_AUDIO_VALUE=0
+AUTO_DETECT_AUDIO=0
 
 class MyWindow(Gtk.Window):
     def __init__(self):
@@ -78,8 +75,8 @@ CONFIGURE_API = f"{BACKEND_API}/settings"
 def fetch_integration_config(serial):
     try:
         response = requests.post(INTEGRATION_ENDPOINT, data={"serial": serial})
-        response.raise_for_status()  # Raise an error for bad responses (4xx, 5xx)
-        config_data = response.json().get('data', {}).get('device', {}).get('settings', {})
+        response.raise_for_status()
+        config_data = response.json().get('data', {}).get('device', {}).get('deviceSettings', {})
         return config_data
     except requests.exceptions.RequestException as e:
         print(f"Error fetching integration config: {e}")
@@ -98,20 +95,21 @@ def fetch_configure_api():
 
 # Fetch values directly from the Integration API (for specific settings)
 def fetch_integration_values(serial):
+    global VIDEO_DEVICE1, VIDEO_DEVICE2, SKIP_CAMERAS_VALUE
     integration_config = fetch_integration_config(serial)
     
     if integration_config:
-        BITRATE = integration_config['default_bitrate']
-        OUTPUT_WATCHDOG_TIMEOUT = integration_config['output_watchdog_timeout']
-        VIDEO_DURATION = integration_config['video_duration']
-        # VIDEO_FOLDER = integration_config['video_output']
-        SKIP_AUDIO_VALUE = integration_config['skip_audio_value']
+        VIDEO_DEVICE1 = integration_config['videoDevice1']
+        VIDEO_DEVICE2 = integration_config['videoDevice2']
+        AUDIO_DEVICE = integration_config['audioDevice']
+        SKIP_CAMERAS_VALUE = integration_config['skipCamerasValue']
+
 
 def fetch_configure_api():
     try:
         response = requests.get(CONFIGURE_API)
         response.raise_for_status()
-        config_data = response.json()  # Assuming the data you provided is within the JSON response
+        config_data = response.json()
         return config_data
     except requests.exceptions.RequestException as e:
         print(f"Error fetching configuration API data: {e}")
@@ -122,18 +120,9 @@ configure_api_data = fetch_configure_api()
 
 if configure_api_data:
     # Assigning values to global variables based on the response fields
-    AUDIO_DEVICE = configure_api_data['audioDevice']
-    VIDEO_DEVICE1 = configure_api_data['videoDevice1']
-    VIDEO_DEVICE2 = configure_api_data['videoDevice2']
-    AUTO_DETECT_AUDIO = configure_api_data['autoDetectAudio']
     CHECK_FILES_EVERY = configure_api_data['checkFilesEvery']
     CHECK_SETTINGS_EVERY = configure_api_data['checkSettingsEvery']
     CHECK_USB_EVERY = configure_api_data['checkUsbEvery']
-    SKIP_CAMERAS_VALUE = configure_api_data['skipCamerasValue']
-    AUTO_DETECT_USB_PORTS = configure_api_data['autoDetectUsbPorts']
-
-# Fetch values from Integration API
-# fetch_integration_values(serial)
 
 
 os.environ["GST_DEBUG"] = '2,flvmux:1'
@@ -149,7 +138,6 @@ current_settings2 = None
 current_global_settings = None
 output = None
 serial = None
-skip_audio_val=0
 skip_cameras_val=0
 
 
@@ -203,10 +191,10 @@ def check_and_modify_wifi_settings():
     except Exception as e:
         print(f"An error occurred: {e}")
 
-# def run_periodically(CHECK_SETTINGS_EVERY):
-#     while True:
-#         check_and_modify_wifi_settings()
-#         time.sleep(CHECK_SETTINGS_EVERY)
+def run_periodically(CHECK_SETTINGS_EVERY):
+    while True:
+        check_and_modify_wifi_settings()
+        time.sleep(CHECK_SETTINGS_EVERY)
 
 
 def get_usb_devices():
@@ -254,7 +242,6 @@ def get_audio_devices():
             l_devices.append(d_address)
             print(f'Found device #{d_counter}: address {d_address} description {d_name}')
     #rejecting first several devices in system
-    d_counter-=SKIP_AUDIO_VALUE
     if d_counter > 1:
         print(f'More than 1 audios found, we would use the last one')
     elif d_counter == 0:
@@ -302,23 +289,19 @@ def get_cameras_settings():
     try:
         req3 = requests.post(INTEGRATION_ENDPOINT, data={"serial": serial})
         req_data = req3.json()
-        settings1 = {'bitrate': req_data['data']['channels']['camera1']['bitrate'] * 1000,
-                     'white_balance': req_data['data']['channels']['camera1']['whiteBalance']}
-        settings2 = {'bitrate': req_data['data']['channels']['camera2']['bitrate'] * 1000,
-                     'white_balance': req_data['data']['channels']['camera2']['whiteBalance']}
-        skip_audio_val_parameter = req_data['data']['device']['settings']['skip_audio_value']
-        if skip_audio_val_parameter < 0:
-            skip_audio_val_parameter = 0
-        if 'skip_cameras_val' in req_data['data']['device']['settings'].keys():
-            skip_cameras_val_parameter = req_data['data']['device']['settings']['skip_cameras_val']
+
+        settings1 = {'bitrate': req_data['data']['device']['channels']['camera1']['bitrate'] * 1000,
+                     'white_balance': req_data['data']['device']['channels']['camera1']['whiteBalance']}
+        settings2 = {'bitrate': req_data['data']['device']['channels']['camera2']['bitrate'] * 1000,
+                     'white_balance': req_data['data']['device']['channels']['camera2']['whiteBalance']}
+        if 'skip_cameras_val' in req_data['data']['device']['deviceSettings'].keys():
+            skip_cameras_val_parameter = req_data['data']['device']['deviceSettings']['skipCamerasValue']
         else:
             skip_cameras_val_parameter = SKIP_CAMERAS_VALUE
         if skip_cameras_val_parameter < 0:
             skip_cameras_val_parameter = 0
         global_settings = {'enable_ssh': req_data['data']['device']['enable_ssh'],
-                           'skip_audio_val': skip_audio_val_parameter,
                            'skip_cameras_val': skip_cameras_val_parameter,
-                        #    'video_output': req_data['data']['device']['settings']['video_output'],
                            'is_reserve': req_data['data']['device']['is_reserve']}
         wifi_settings = req_data['data']['device']['wifi_settings']
         do_renew_wifi = req_data['data']['device']['doResetWifi']
@@ -344,7 +327,6 @@ def cb_check_settings(b):
             current_settings2 = settings2
         else:
             pass
-            #print('No changes of settings observed')
         if len(set(current_global_settings.items()) ^ set(global_settings.items())) > 0:
             print('Device settings changed. Adjusting')
             output.modify_device_settings(global_settings)
@@ -433,15 +415,15 @@ class output_connector():
             l_audio_devices, d_audio_counter = get_audio_devices()
             if d_audio_counter >=1:
                 self.with_audio = True
-                self.audio_device = l_audio_devices[-1]
+                self.audioDevice = l_audio_devices[-1]
             else:
                 self.with_audio = False
         else:
-            if len(AUDIO_DEVICE) == 0:
+            if AUDIO_DEVICE is None or len(AUDIO_DEVICE) == 0:
                 self.with_audio = False
             else:
                 self.with_audio = True
-                self.audio_device = AUDIO_DEVICE
+                self.audioDevice = AUDIO_DEVICE
 
         self.pipeline=None
         self.launch_pipeline()
@@ -562,12 +544,11 @@ class output_connector():
 
         #Process skip_audio_val:
         #Process skip_cameras_val:
-        if ((self.global_settings['skip_audio_val'] != current_global_settings['skip_audio_val']) or
-           (self.global_settings['skip_cameras_val'] != current_global_settings['skip_cameras_val'])):
+        if(self.global_settings['skip_cameras_val'] != current_global_settings['skip_cameras_val']):
         #Process video_output:
         #    (self.global_settings['video_output'] != current_global_settings['video_output'])
     
-            print('skip_audio_val or skip_cameras_val or video_output has been changed, relaunching to enable')
+            print(' skip_cameras_val or video_output has been changed, relaunching to enable')
             exit(4)
 
         #Process is_reserve. When true, we don't need to stream anymore
@@ -696,17 +677,18 @@ class output_connector():
 
 def main(args):
     global device_slot, current_settings1, current_settings2
-    global current_global_settings, current_wifi_settings, output, serial
+    global current_global_settings, current_wifi_settings, output, serial, CHECK_SETTINGS_EVERY, CHECK_FILES_EVERY
 
     # Initialize GStreamer
     Gst.init(None)
     serial = get_serial_number()
     configure_network_priorities()
+    fetch_integration_values(serial)
 
-    # # Start the thread to check settings periodically
-    # thread = threading.Thread(target=run_periodically, args=(CHECK_SETTINGS_EVERY,))
-    # thread.daemon = True
-    # thread.start()
+    # Start the thread to check settings periodically
+    thread = threading.Thread(target=run_periodically, args=(CHECK_SETTINGS_EVERY,))
+    thread.daemon = True
+    thread.start()
 
     wait_for_streaming = True
     while wait_for_streaming:
@@ -739,12 +721,10 @@ def main(args):
                                  'white_balance': channels_data['camera2']['whiteBalance']}
 
                 # Set global settings and wifi settings
-                skip_audio_val_parameter = max(0, req_data['data']['device']['settings'].get('skip_audio_value', 0))
-                skip_cameras_val_parameter = max(0, req_data['data']['device']['settings'].get('skip_cameras_val', SKIP_CAMERAS_VALUE))
+                skip_cameras_val_parameter = max(0, req_data['data']['device']['deviceSettings'].get('skipCamerasValue', SKIP_CAMERAS_VALUE))
 
                 global_settings = {
                     'enable_ssh': req_data['data']['device']['enable_ssh'],
-                    'skip_audio_val': skip_audio_val_parameter,
                     'skip_cameras_val': skip_cameras_val_parameter,
                     # 'video_output': req_data['data']['device']['settings']['video_output'],
                     'is_reserve': req_data['data']['device']['is_reserve']
