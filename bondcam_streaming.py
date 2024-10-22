@@ -17,7 +17,7 @@ gi.require_version('Gtk', '3.0')
 gi.require_version('Gst', '1.0')
 from gi.repository import GLib, Gst, Gtk
 
-BITRATE=0
+BITRATE=2500000
 OUTPUT_WATCHDOG_TIMEOUT=0
 VIDEO_DURATION=0
 VIDEO_FRAMERATE1=30
@@ -27,11 +27,11 @@ VIDEO_DEVICE1=None
 VIDEO_DEVICE2= None
 AUDIO_DEVICE=None
 DO_LOCAL_OUTPUT=0
-AUTO_DETECT_USB_PORTS=0
+AUTO_DETECT_USB_PORTS=1
 CHECK_USB_EVERY=None
 CHECK_SETTINGS_EVERY=None
 SKIP_CAMERAS_VALUE=0
-AUTO_DETECT_AUDIO=0
+AUTO_DETECT_AUDIO=1
 
 class MyWindow(Gtk.Window):
     def __init__(self):
@@ -271,15 +271,6 @@ def cb_check_usb(output):
                 print(f'Connecting device {device} back to slot #{1}')
                 output.connect_usb_camera(1)
 
-        #Disconnecting slots which are without USB camera for this slot
-        # #TODO: do we really need it? Or watchdog+error handle better?
-        # for slot_num in range(len(device_slot)):
-        #     if device_slot[slot_num] in l_devices_new:
-        #         #we have this camera active, ignoring
-        #         pass
-        #     else:
-        #         print(f'Disconnecting USB slot #{slot_num} by callback')
-        #         output.disconnect_usb_camera(slot_num)
     except Exception as ex:
         print(f'Exception at USB check callback: {str(ex)}')
         return True
@@ -300,8 +291,7 @@ def get_cameras_settings():
             skip_cameras_val_parameter = SKIP_CAMERAS_VALUE
         if skip_cameras_val_parameter < 0:
             skip_cameras_val_parameter = 0
-        global_settings = {'enable_ssh': req_data['data']['device']['enable_ssh'],
-                           'skip_cameras_val': skip_cameras_val_parameter,
+        global_settings = {'skip_cameras_val': skip_cameras_val_parameter,
                            'is_reserve': req_data['data']['device']['is_reserve']}
         wifi_settings = req_data['data']['device']['wifi_settings']
         do_renew_wifi = req_data['data']['device']['doResetWifi']
@@ -390,7 +380,6 @@ class output_connector():
         self.source_bin_strs = ['', '']
         self.compositors = []
         self.label=label
-        # self.save_path=global_settings['video_output']
         self.bitrate=BITRATE
         self.watchdog_timeout=OUTPUT_WATCHDOG_TIMEOUT
         self.rtmp_path1=rtmp_path1
@@ -429,6 +418,8 @@ class output_connector():
         self.launch_pipeline()
 
     def launch_pipeline(self):
+        global BITRATE
+        print('--------------BITRATE', BITRATE)
         if self.pipeline:
             print(f'Calling async pipeline destruction for output_connector class "{self.label}"')
             self.pipeline.call_async(remove_pipeline, self.label)
@@ -439,7 +430,7 @@ class output_connector():
 
         print(f'==================Creating a new pipeline=====================\n')
         if self.with_audio:
-            audio_input = f'alsasrc device={self.audio_device} ! audioresample ! audio/x-raw,rate=48000 ! voaacenc bitrate=96000 ! audio/mpeg ! aacparse ! audio/mpeg, mpegversion=4'
+            audio_input = f'alsasrc device={self.audioDevice} ! audioresample ! audio/x-raw,rate=48000 ! voaacenc bitrate=96000 ! audio/mpeg ! aacparse ! audio/mpeg, mpegversion=4'
         else:
             audio_input = f'audiotestsrc is-live=1 wave=silence ! audioresample ! audio/x-raw,rate=48000 ! voaacenc bitrate=96000 ! audio/mpeg ! aacparse ! audio/mpeg, mpegversion=4'
 
@@ -678,7 +669,6 @@ class output_connector():
 def main(args):
     global device_slot, current_settings1, current_settings2
     global current_global_settings, current_wifi_settings, output, serial, CHECK_SETTINGS_EVERY, CHECK_FILES_EVERY
-
     # Initialize GStreamer
     Gst.init(None)
     serial = get_serial_number()
@@ -724,7 +714,6 @@ def main(args):
                 skip_cameras_val_parameter = max(0, req_data['data']['device']['deviceSettings'].get('skipCamerasValue', SKIP_CAMERAS_VALUE))
 
                 global_settings = {
-                    'enable_ssh': req_data['data']['device']['enable_ssh'],
                     'skip_cameras_val': skip_cameras_val_parameter,
                     # 'video_output': req_data['data']['device']['settings']['video_output'],
                     'is_reserve': req_data['data']['device']['is_reserve']
