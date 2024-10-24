@@ -17,7 +17,7 @@ gi.require_version('Gtk', '3.0')
 gi.require_version('Gst', '1.0')
 from gi.repository import GLib, Gst, Gtk
 
-BITRATE=2500000
+BITRATE=250000
 OUTPUT_WATCHDOG_TIMEOUT=0
 VIDEO_DURATION=0
 VIDEO_FRAMERATE1=30
