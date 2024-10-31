@@ -17,20 +17,16 @@ gi.require_version('Gtk', '3.0')
 gi.require_version('Gst', '1.0')
 from gi.repository import GLib, Gst, Gtk
 
-BITRATE=250000
 OUTPUT_WATCHDOG_TIMEOUT=0
-VIDEO_DURATION=0
 VIDEO_FRAMERATE1=30
 VIDEO_FRAMERATE2=30
 CHECK_FILES_EVERY=None
 VIDEO_DEVICE1=None
 VIDEO_DEVICE2= None
 AUDIO_DEVICE=None
-DO_LOCAL_OUTPUT=0
 AUTO_DETECT_USB_PORTS=1
 CHECK_USB_EVERY=None
 CHECK_SETTINGS_EVERY=None
-SKIP_CAMERAS_VALUE=0
 AUTO_DETECT_AUDIO=1
 
 class MyWindow(Gtk.Window):
@@ -95,14 +91,13 @@ def fetch_configure_api():
 
 # Fetch values directly from the Integration API (for specific settings)
 def fetch_integration_values(serial):
-    global VIDEO_DEVICE1, VIDEO_DEVICE2, SKIP_CAMERAS_VALUE
+    global VIDEO_DEVICE1, VIDEO_DEVICE2
     integration_config = fetch_integration_config(serial)
     
     if integration_config:
         VIDEO_DEVICE1 = integration_config['videoDevice1']
         VIDEO_DEVICE2 = integration_config['videoDevice2']
         AUDIO_DEVICE = integration_config['audioDevice']
-        SKIP_CAMERAS_VALUE = integration_config['skipCamerasValue']
 
 
 def fetch_configure_api():
@@ -210,8 +205,7 @@ def get_usb_devices():
             d_address = d.split('\n\t')[1]
             l_devices.append(d_address)
             # print(f'Found device #{d_counter}: address {d_address} name {d_name}')
-    #rejecting first several devices in system
-    d_counter-=SKIP_CAMERAS_VALUE
+
 
     if d_counter > 2:
         # print(f'More than 2 cameras found, we would use last 2')
@@ -229,7 +223,7 @@ def get_usb_devices():
     return l_devices, d_counter
 
 def get_audio_devices():
-    cmd_devices = """aplay -l | grep card"""
+    cmd_devices = """arecord -l | grep card"""
     devicesstr = subprocess.run(["bash", "-c", cmd_devices], stdout=subprocess.PIPE)
     devices = devicesstr.stdout.decode('utf-8')
     d_counter = 0
@@ -241,6 +235,7 @@ def get_audio_devices():
             d_address = f"hw:{d.split(':')[0].split(' ')[-1]},0"
             l_devices.append(d_address)
             print(f'Found device #{d_counter}: address {d_address} description {d_name}')
+
     #rejecting first several devices in system
     if d_counter > 1:
         print(f'More than 1 audios found, we would use the last one')
@@ -285,19 +280,12 @@ def get_cameras_settings():
                      'white_balance': req_data['data']['device']['channels']['camera1']['whiteBalance']}
         settings2 = {'bitrate': req_data['data']['device']['channels']['camera2']['bitrate'] * 1000,
                      'white_balance': req_data['data']['device']['channels']['camera2']['whiteBalance']}
-        if 'skip_cameras_val' in req_data['data']['device']['deviceSettings'].keys():
-            skip_cameras_val_parameter = req_data['data']['device']['deviceSettings']['skipCamerasValue']
-        else:
-            skip_cameras_val_parameter = SKIP_CAMERAS_VALUE
-        if skip_cameras_val_parameter < 0:
-            skip_cameras_val_parameter = 0
-        global_settings = {'skip_cameras_val': skip_cameras_val_parameter,
-                           'is_reserve': req_data['data']['device']['is_reserve']}
+        global_settings = {'isReserve': req_data['data']['device']['isReserve']}
         wifi_settings = req_data['data']['device']['wifi_settings']
         do_renew_wifi = req_data['data']['device']['doResetWifi']
 
     except Exception as e:
-        exc_type, exc_obj, exc_tb = sys.exc_info()
+        exc_tb = sys.exc_info()
         fname = exc_tb.tb_frame.f_code.co_filename
         line_num = exc_tb.tb_lineno
         print(f"An error occurred in file '{fname}' at line {line_num}: {e}")
@@ -349,21 +337,16 @@ def list_all_connections():
     settings_proxy = bus.get_object(interface_netman, path_netman_settings)
     settings = Interface(settings_proxy, interface_settings)
     connections = settings.ListConnections()
-    # connections = NetworkManager.Settings.ListConnections()
     for connection in connections:
         this_connection = bus.get_object(interface_netman, connection)
         this_connection_interface = Interface(this_connection, interface_connection)
         settings = this_connection_interface.GetSettings()
-        connection_uuid = settings['connection']['uuid']
-        connection_type = settings['connection']['type']
-        #connection_type = settings['connection']['priority']
-        print(f"Connection UUID: {connection_uuid}, Type: {connection_type}")
+
 def set_networks_priorities(connection_type, priority):
     bus = SystemBus()
     settings_proxy = bus.get_object(interface_netman, path_netman_settings)
     settings = Interface(settings_proxy, interface_settings)
     connections = settings.ListConnections()
-    # connections = NetworkManager.Settings.ListConnections()
     for connection in connections:
         this_connection = bus.get_object(interface_netman, connection)
         this_connection_interface = Interface(this_connection, interface_connection)
@@ -373,18 +356,15 @@ def set_networks_priorities(connection_type, priority):
 
 class output_connector():
     def __init__(self, label, rtmp_path1, rtmp_path2, settings1, settings2, global_settings):
-        print(f'Init output_connector "{label}" class')
         self.pipeline=None
         self.bus = None
         self.source_bins = [None, None]
         self.source_bin_strs = ['', '']
         self.compositors = []
         self.label=label
-        self.bitrate=BITRATE
         self.watchdog_timeout=OUTPUT_WATCHDOG_TIMEOUT
         self.rtmp_path1=rtmp_path1
         self.rtmp_path2=rtmp_path2
-        self.video_duration=VIDEO_DURATION
         self.status='NULL'
         self.active_camera=None
         self.devices = [None, None]
@@ -393,12 +373,6 @@ class output_connector():
         self.settings1 = settings1
         self.settings2 = settings2
         self.global_settings = global_settings
-
-        # if self.device1 and self.device2:
-        #     self.num_devices = 2
-        # elif self.device1 and self.device2 is None:
-        #     self.num_devices = 1
-        # elif self.device1 is None and self.device2 is None:
 
         if AUTO_DETECT_AUDIO:
             l_audio_devices, d_audio_counter = get_audio_devices()
@@ -418,8 +392,6 @@ class output_connector():
         self.launch_pipeline()
 
     def launch_pipeline(self):
-        global BITRATE
-        print('--------------BITRATE', BITRATE)
         if self.pipeline:
             print(f'Calling async pipeline destruction for output_connector class "{self.label}"')
             self.pipeline.call_async(remove_pipeline, self.label)
@@ -428,7 +400,10 @@ class output_connector():
 
         rtmp_output_element = 'rtmp2sink'
 
-        print(f'==================Creating a new pipeline=====================\n')
+        camera1_bitrate = self.settings1['bitrate']
+        camera2_bitrate = self.settings2['bitrate']
+
+        
         if self.with_audio:
             audio_input = f'alsasrc device={self.audioDevice} ! audioresample ! audio/x-raw,rate=48000 ! voaacenc bitrate=96000 ! audio/mpeg ! aacparse ! audio/mpeg, mpegversion=4'
         else:
@@ -436,12 +411,12 @@ class output_connector():
 
         gcommand = f"""videotestsrc pattern=0 is-live=1 ! videoconvert ! video/x-raw,width=1920,height=1080!  source_compositor1.sink_0    
             input-selector name=source_compositor1 sync-mode=1 ! videoconvert ! video/x-raw,format=NV12 !  
-            mpph264enc name=encoder1 profile=main qos=1 header-mode=1 profile=main bps={BITRATE} bps-max={BITRATE + 1000000} rc-mode=vbr ! video/x-h264,level=(string)4 ! h264parse config-interval=1 ! tee name=tee1_{self.label} ! 
+            mpph264enc name=encoder1 profile=main qos=1 header-mode=1 profile=main bps={camera1_bitrate} bps-max={camera1_bitrate + 1000000} rc-mode=vbr ! video/x-h264,level=(string)4 ! h264parse config-interval=1 ! tee name=tee1_{self.label} ! 
             queue ! flvmux name=mux streamable=1 ! watchdog timeout={self.watchdog_timeout} ! {rtmp_output_element} sync=0 name=rtmpsink1{self.label} location=\"{self.rtmp_path1}\"
             
             videotestsrc pattern=0 is-live=1 ! videoconvert ! video/x-raw,width=1920,height=1080! source_compositor2.sink_0 
             input-selector name=source_compositor2 sync-mode=1 ! videoconvert ! video/x-raw,format=NV12 !  
-            mpph264enc name=encoder2 profile=main qos=1 header-mode=1 profile=main bps={BITRATE} bps-max={BITRATE + 1000000} rc-mode=vbr ! video/x-h264,level=(string)4 ! h264parse config-interval=1 ! tee name=tee2_{self.label} ! 
+            mpph264enc name=encoder2 profile=main qos=1 header-mode=1 profile=main bps={camera2_bitrate} bps-max={camera2_bitrate + 1000000} rc-mode=vbr ! video/x-h264,level=(string)4 ! h264parse config-interval=1 ! tee name=tee2_{self.label} ! 
             queue ! flvmux name=mux2 streamable=1 ! watchdog timeout={self.watchdog_timeout} ! {rtmp_output_element} sync=0 name=rtmpsink2{self.label} location=\"{self.rtmp_path2}\"
             {audio_input} ! tee name=audiotee ! queue ! mux.
             audiotee. !  queue ! mux2."""
@@ -451,20 +426,6 @@ class output_connector():
 
         for camera_num in range(2):
             self.compositors.append(self.pipeline.get_by_name(f'source_compositor{camera_num+1}'))
-        print(f'Compositors: {self.compositors}')
-
-        # self.connect_usbs()
-
-        self.bus = self.pipeline.get_bus()
-        self.bus.add_signal_watch()
-
-        # self.bus.connect('message::eos', self.eos_callback)
-        # self.bus.connect('message::error', self.error_callback)
-        # self.bus.connect('message::state-changed', self.state_changed_callback)
-        # self.bus.connect('message::info', self.on_info)
-        # self.bus.connect('message::warning', self.on_warning)
-        # self.bus.connect('message::stream_status', self.on_stream_status)
-        # self.bus.connect('message::request_state', self.on_request_state)
 
         self.pipeline.set_state(Gst.State.PLAYING)
         self.modify_settings(self.settings1, self.settings2)
@@ -533,18 +494,9 @@ class output_connector():
     def modify_device_settings(self, global_settings):
         print(f'Using new global settings for device: {global_settings}')
 
-        #Process skip_audio_val:
-        #Process skip_cameras_val:
-        if(self.global_settings['skip_cameras_val'] != current_global_settings['skip_cameras_val']):
-        #Process video_output:
-        #    (self.global_settings['video_output'] != current_global_settings['video_output'])
-    
-            print(' skip_cameras_val or video_output has been changed, relaunching to enable')
-            exit(4)
-
-        #Process is_reserve. When true, we don't need to stream anymore
-        if global_settings['is_reserve']:
-            print('is_reserved has been changed, relaunching to enable stand by mode')
+        #Process isReserve. When true, we don't need to stream anymore
+        if global_settings['isReserve']:
+            print('isReserved has been changed, relaunching to enable stand by mode')
             exit(5)
 
         self.global_settings = global_settings
@@ -587,8 +539,6 @@ class output_connector():
             if self.source_bins[1]:
                 if parent.get_property('name') == self.source_bins[1].get_property('name'):
                     self.disconnect_usb_camera(1)
-            # else:
-            #     print(f'Unable to identify bin with name {parent_name}. Not sure what to remove')
 
         else:
             print(f'Error in RTMP pipeline "{self.pipeline}":{msg.parse_error()}')
@@ -631,9 +581,6 @@ class output_connector():
 
     def run_pipeline(self):
         self.loop = GLib.MainLoop()
-        #self.bus = self.pipeline.get_bus()
-        #self.bus.add_signal_watch()
-        # bus.connect("message", bus_call, loop)
 
         self.pipeline.set_state(Gst.State.PLAYING)
         try:
@@ -682,75 +629,54 @@ def main(args):
 
     wait_for_streaming = True
     while wait_for_streaming:
-        if not DO_LOCAL_OUTPUT:
-            try:
-                req3 = requests.post(INTEGRATION_ENDPOINT, data={"serial": serial})
-                req_data = req3.json()
+        try:
+            req3 = requests.post(INTEGRATION_ENDPOINT, data={"serial": serial})
+            req_data = req3.json()
 
-                # Check for channel data in the response
-                channels_data = req_data['data']['device'].get('channels')
-                if channels_data is None:
-                    channelsProvided = False
-                else:
-                    channelsProvided = True
-                    # Ensure complete RTMP URLs
-                    endpoint1 = channels_data['camera1']['ingestEndpoint']
-                    key1 = channels_data['camera1']['streamKey']
-                    playbackUrl1 = channels_data['camera1']['playbackUrl']
-                    endpoint2 = channels_data['camera2']['ingestEndpoint']
-                    key2 = channels_data['camera2']['streamKey']
-                    playbackUrl2 = channels_data['camera2']['playbackUrl']
-                    
-                    streaming_address1 = f"{endpoint1}/{key1}"
-                    streaming_address2 = f"{endpoint2}/{key2}"
+            # Check for channel data in the response
+            channels_data = req_data['data']['device'].get('channels')
+            if channels_data is None:
+                channelsProvided = False
+            else:
+                channelsProvided = True
+                # Ensure complete RTMP URLs
+                endpoint1 = channels_data['camera1']['ingestEndpoint']
+                key1 = channels_data['camera1']['streamKey']
+                playbackUrl1 = channels_data['camera1']['playbackUrl']
+                endpoint2 = channels_data['camera2']['ingestEndpoint']
+                key2 = channels_data['camera2']['streamKey']
+                playbackUrl2 = channels_data['camera2']['playbackUrl']
+                
+                streaming_address1 = f"{endpoint1}/{key1}"
+                streaming_address2 = f"{endpoint2}/{key2}"
 
-                    # Set camera settings
-                    settings1 = {'bitrate': channels_data['camera1']['bitrate'] * 1000, 
-                                 'white_balance': channels_data['camera1']['whiteBalance']}
-                    settings2 = {'bitrate': channels_data['camera2']['bitrate'] * 1000, 
-                                 'white_balance': channels_data['camera2']['whiteBalance']}
+                # Set camera settings
+                settings1 = {'bitrate': channels_data['camera1']['bitrate'] * 1000, 
+                                'white_balance': channels_data['camera1']['whiteBalance']}
+                settings2 = {'bitrate': channels_data['camera2']['bitrate'] * 1000, 
+                                'white_balance': channels_data['camera2']['whiteBalance']}
 
-                # Set global settings and wifi settings
-                skip_cameras_val_parameter = max(0, req_data['data']['device']['deviceSettings'].get('skipCamerasValue', SKIP_CAMERAS_VALUE))
+            # Set global settings and wifi settings
+            global_settings = {
+                'isReserve': req_data['data']['device']['isReserve']
+            }
+            wifi_settings = req_data['data']['device']['wifi_settings']
 
-                global_settings = {
-                    'skip_cameras_val': skip_cameras_val_parameter,
-                    # 'video_output': req_data['data']['device']['settings']['video_output'],
-                    'is_reserve': req_data['data']['device']['is_reserve']
-                }
-                wifi_settings = req_data['data']['device']['wifi_settings']
-
-            except Exception as e:
-                exc_type, exc_obj, exc_tb = sys.exc_info()
-                fname = exc_tb.tb_frame.f_code.co_filename
-                line_num = exc_tb.tb_lineno
-                print(f"An error occurred in file '{fname}' at line {line_num}: {e}")
-                traceback.print_exc()
-                return 1
-        # else:
-        #     channelsProvided = True
-        #     streaming_address1 = LOCAL_ENDPOINT1
-        #     streaming_address2 = LOCAL_ENDPOINT2
-        #     settings1 = {'bitrate': BITRATE, 'white_balance': 6500}
-        #     settings2 = {'bitrate': BITRATE, 'white_balance': 6500}
-        #     global_settings = {
-        #         'enable_ssh': False,
-        #         'skip_audio_val': SKIP_AUDIO_VALUE,
-        #         'skip_cameras_val': SKIP_CAMERAS_VALUE,
-        #         'is_reserve': False,
-        #         'video_output': "videos"
-        #     }
-        #     playbackUrl1 = ''
-        #     playbackUrl2 = ''
-        #     wifi_settings = []
+        except Exception as e:
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            fname = exc_tb.tb_frame.f_code.co_filename
+            line_num = exc_tb.tb_lineno
+            print(f"An error occurred in file '{fname}' at line {line_num}: {e}")
+            traceback.print_exc()
+            return 1
 
         # Update wait condition
         time.sleep(1)
-        wait_for_streaming = global_settings['is_reserve'] or not channelsProvided
+        wait_for_streaming = global_settings['isReserve'] or not channelsProvided
 
     print("We're asked to stream, launching it")
     print(f'Streaming to endpoints: {streaming_address1}, {streaming_address2}')
-    print(f'Playback URL: {playbackUrl1}, {playbackUrl2}')
+    print(f'Playback URLs: {playbackUrl1}, {playbackUrl2}')
 
     # Assign global settings
     current_settings1 = settings1
