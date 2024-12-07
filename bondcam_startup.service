@@ -1,4 +1,4 @@
-[Unit]
+[Unit]clear
 Description=Bond-cam startup service
 
 [Service]
