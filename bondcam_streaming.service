@@ -2,8 +2,8 @@
 Description=Bond-cam streaming service
 
 [Service]
-User=nifty
-ExecStart=/bin/bash -c 'python3 /home/nifty/Projects/bondcam_streaming/bondcam_streaming.py'
+User=root
+ExecStart=/bin/bash -c 'python3 /home/nifty/Projects/bondcam_streaming/bondcam_streaming.py >> /home/nifty/Projects/bondcam_streaming/bondcam_streaming.log 2>&1'
 ExecReload=/bin/kill -HUP $MAINPID
 KillMode=process
 IgnoreSIGPIPE=true
