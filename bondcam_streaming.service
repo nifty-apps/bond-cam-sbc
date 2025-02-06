@@ -1,14 +1,18 @@
 [Unit]
-Description=Bond-cam streaming service
+Description=Bondcam streaming service
 
 [Service]
 User=root
-ExecStart=/bin/bash -c 'python3 /home/nifty/Projects/bondcam_streaming/bondcam_streaming.py >> /home/nifty/Projects/bondcam_streaming/bondcam_streaming.log 2>&1'
+Group=root
+ExecStart=/bin/bash -c 'python3 /home/nifty/Projects/bondcam_streaming/bondcam_streaming.py'
+StandardOutput=append:/home/nifty/Projects/bondcam_streaming/bondcam_streaming.log
+StandardError=append:/home/nifty/Projects/bondcam_streaming/bondcam_streaming.log
 ExecReload=/bin/kill -HUP $MAINPID
 KillMode=process
 IgnoreSIGPIPE=true
 Restart=always
 RestartSec=3
+TimeoutSec=60
 Type=simple
 
 [Install]

@@ -1,187 +1,132 @@
-import os
-import subprocess
-import requests
-import logging
-from dbus import SystemBus, Interface
 from datetime import datetime, timezone
-from dotenv import load_dotenv
+from api import update_device
+import subprocess
+import time
+from logger import get_logger
 
-load_dotenv()
+logger = get_logger()
 
-BACKEND_API = os.environ["BACKEND_API"]
+last_wifi_settings = None
 
-# API Endpoint
-DEVICE_UPDATE_API_ENDPOINT = f"{BACKEND_API}/device/update"
-
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger()
-
-# NetworkManager D-Bus interfaces and paths
-interface_netman = "org.freedesktop.NetworkManager"
-path_netman_settings = "/org/freedesktop/NetworkManager/Settings"
-interface_settings = "org.freedesktop.NetworkManager.Settings"
-interface_connection = "org.freedesktop.NetworkManager.Settings.Connection"
-
-
-def list_all_connections():
-    bus = SystemBus()
-    settings_proxy = bus.get_object(interface_netman, path_netman_settings)
-    settings = Interface(settings_proxy, interface_settings)
-    connections = settings.ListConnections()
-    for connection in connections:
-        this_connection = bus.get_object(interface_netman, connection)
-        this_connection_interface = Interface(this_connection, interface_connection)
-        settings = this_connection_interface.GetSettings()
-
-def set_networks_priorities(connection_type, priority):
-    bus = SystemBus()
-    settings_proxy = bus.get_object(interface_netman, path_netman_settings)
-    settings = Interface(settings_proxy, interface_settings)
-    connections = settings.ListConnections()
-    for connection in connections:
-        this_connection = bus.get_object(interface_netman, connection)
-        this_connection_interface = Interface(this_connection, interface_connection)
-        settings = this_connection_interface.GetSettings()
-        if settings['connection']['type'] == connection_type:
-            connection.SetAutoconnectPriority(priority)
-
-
-
-def configure_network_priorities():
-    """Configures network priorities for various network types."""
-    print('Configuring connection priorities for network connections discovered:')
-    list_all_connections()
-    set_networks_priorities('ethernet', 0)
-    set_networks_priorities('wifi', 10)
-    set_networks_priorities('gsm', 50)
-    set_networks_priorities('cdma', 50)
-
-
-
-#==========================
-# WiFi connection functions
-#==========================
-
-def modify_and_connect_wifi(wifi_settings, serial):
-    available_networks = get_available_networks()
-    connected_ssid = None
-    all_networks = get_all_networks()
-
-    for wifi in wifi_settings:
-        ssid = wifi['ssid']
-        logger.info(f"Attempting to connect to network '{ssid}'...")
-        password = wifi['password']
-
-        # Skip the connection if it's not available in the scanned list
-        if ssid not in available_networks:
-            logger.info(f"Network '{ssid}' not available in the area. Skipping...")
-            continue
-
-        network_info = next((net for net in all_networks if net[0] == ssid), None)
-        active_connections = get_active_connections()
-
-        if network_info:
-            if ssid in active_connections:
-                logger.info(f"Network '{ssid}' is already connected. Skipping...")
-                connected_ssid = ssid
-                break
-            else:
-                if should_update_wifi_connection(ssid, password):
-                    if update_wifi_connection(ssid, password):
-                        logger.info(f"Network settings updated for '{ssid}'")
-                        if connect_to_wifi(ssid):
-                            logger.info(f"Successfully connected to network '{ssid}'")
-                            connected_ssid = ssid
-                            break
-                        else:
-                            logger.warning(f"Failed to connect to network '{ssid}'. Trying next...")
-                    else:
-                        logger.warning(f"Failed to update network '{ssid}'. Trying next...")
-                else:
-                    if connect_to_wifi(ssid):
-                        logger.info(f"Successfully connected to network '{ssid}'")
-                        connected_ssid = ssid
-                        break
-                    else:
-                        logger.warning(f"Failed to connect to network '{ssid}'. Trying next...")
-        else:
-            existing_connections = [net for net in all_networks if net[0] == ssid]
-            if not existing_connections:
-                if add_wifi_connection(ssid, password):
-                    logger.info(f"Network settings added for '{ssid}'")
-                    if connect_to_wifi(ssid):
-                        logger.info(f"Successfully connected to network '{ssid}'")
-                        connected_ssid = ssid
-                        break
-                    else:
-                        logger.warning(f"Failed to connect to added network '{ssid}'. Trying next...")
-            else:
-                logger.warning(f"Network '{ssid}' already exists with UUID(s): {[net[1] for net in existing_connections]}. Skipping addition.")
-
-    if connected_ssid:
-        current_timestamp = datetime.now(timezone.utc).isoformat()
-        update_wifi_status(serial, connected_ssid, current_timestamp)
+def get_connected_network():
+    """Get current Wi-Fi status by querying the system for the active SSID."""
+    try:
+        # Use iwgetid or nmcli to get the active SSID
+        result = subprocess.run(['iwgetid', '-r'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        active_ssid = result.stdout.decode('utf-8').strip()
+        return active_ssid if active_ssid else None
+    except Exception as e:
+        logger.error(f"Error getting current Wi-Fi status: {e}")
+        return None
 
 def get_available_networks():
-    """Scan and return a list of available SSIDs in the area."""
-    scan_cmd = "iwlist wlan0 scanning | grep 'ESSID'"
-    result = subprocess.run(["bash", "-c", scan_cmd], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    if result.returncode == 0:
-        return [line.split(':')[1].replace('"', '').strip() for line in result.stdout.decode('utf-8').split('\n') if 'ESSID' in line]
-    return []
-
-def get_all_networks():
-    """Get all configured networks."""
-    check_cmd = "nmcli -g NAME,STATE connection show"
-    result = subprocess.run(["bash", "-c", check_cmd], stdout=subprocess.PIPE)
-    if result.returncode == 0:
-        return [line.split(':') for line in result.stdout.decode('utf-8').strip().split('\n')]
-    return []
-
-def get_active_connections():
-    """Get all active connections."""
-    active_cmd = "nmcli -t -f NAME,DEVICE connection show --active"
-    result = subprocess.run(["bash", "-c", active_cmd], stdout=subprocess.PIPE)
-    if result.returncode == 0:
-        return [line.split(':')[0] for line in result.stdout.decode('utf-8').strip().split('\n')]
-    return []
-
-def should_update_wifi_connection(ssid, password):
-    get_password_cmd = f"sudo nmcli -s -g 802-11-wireless-security.psk connection show '{ssid}'"
-    result = subprocess.run(["bash", "-c", get_password_cmd], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    if result.returncode == 0:
-        current_password = result.stdout.decode('utf-8').strip()
-        return current_password != password
-    return True
-
-def update_wifi_connection(ssid, password):
-    modify_cmd = f"sudo nmcli connection modify '{ssid}' wifi-sec.key-mgmt wpa-psk wifi-sec.psk '{password}'"
-    result = subprocess.run(["bash", "-c", modify_cmd], stdout=subprocess.PIPE)
-    return result.returncode == 0
-
-def add_wifi_connection(ssid, password):
-    add_cmd = f"sudo nmcli device wifi rescan && sudo nmcli connection add type wifi con-name '{ssid}' ssid '{ssid}' wifi-sec.key-mgmt wpa-psk wifi-sec.psk '{password}'"
-    result = subprocess.run(["bash", "-c", add_cmd], stdout=subprocess.PIPE)
-    return result.returncode == 0
-
-def connect_to_wifi(ssid):
-    connect_cmd = f"sudo nmcli connection up '{ssid}'"
+    """Scan and return a list of available SSIDs in the area using iwlist."""
     try:
-        subprocess.run(["bash", "-c", connect_cmd], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
-        return True
-    except subprocess.CalledProcessError as e:
-        error_message = e.stderr.decode('utf-8').strip() if e.stderr else str(e)
-        logger.error(f"Error: {error_message}. Failed to connect to network '{ssid}'.")
+        result = subprocess.run(['iwlist', 'wlan0', 'scan'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        output = result.stdout.decode('utf-8')
+        if result.returncode != 0:
+            logger.error(f"Error scanning for available networks: {result.stderr.decode('utf-8')}")
+            return []
+
+        # Parse the output to extract the ESSIDs of all available networks
+        networks = []
+        for line in output.splitlines():
+            if "ESSID:" in line:
+                essid = line.split('ESSID:')[1].strip().strip('"')
+                if essid:
+                    networks.append(essid)
+
+        return networks
+
+    except Exception as e:
+        logger.error(f"Error scanning for available networks: {e}")
+        return []
+
+def connect_to_preferred_network(preferred_networks, serial):
+    """Connect to the preferred network if not already connected and available in the area."""
+
+    connected_ssid = get_connected_network()
+    logger.info(f"Current connected SSID: {connected_ssid}")
+
+    available_networks = get_available_networks()
+    logger.info(f"Available networks: {available_networks}")
+
+    for wifi_network in preferred_networks:
+        ssid = wifi_network['ssid']
+        password = wifi_network['password']
+
+        # Break if already connected to the preferred network
+        if connected_ssid == ssid:
+            logger.info(f"Already connected to network '{ssid}'.")
+            break
+
+        # Skip if network is not in the available coverage area
+        if ssid not in available_networks:
+            logger.warning(f"Network '{ssid}' not found in the area. Skipping...")
+            continue
+            
+        # Attempt to connect to the network
+        logger.info(f"Attempting to connect to network '{ssid}'...")
+        if connect_to_wifi(ssid, password):
+            logger.info(f"Successfully connected to network '{ssid}'")
+            time.sleep(5)  # Wait for 5 seconds to ensure the connection is stable
+            # Update the wifi status
+            current_timestamp = datetime.now(timezone.utc).isoformat()
+            update_wifi_status(serial, ssid, current_timestamp, preferred_networks)
+            break
+        else:
+            logger.warning(f"Failed to connect to network '{ssid}'. Trying next...")
+
+def connect_to_wifi(ssid, password):
+    """Connect to a WiFi network using CLI tools (nmcli)."""
+    try:
+        # Connect to the Wi-Fi network using nmcli
+        command = ['nmcli', 'dev', 'wifi', 'connect', ssid, 'password', password]
+        result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+        if result.returncode == 0:
+            logger.info(f"Successfully connected to network '{ssid}'")
+            return True
+        else:
+            logger.error(f"Failed to connect to network '{ssid}': {result.stderr.decode('utf-8')}")
+            return False
+
+    except Exception as e:
+        logger.error(f"Error connecting to Wi-Fi network '{ssid}': {e}")
         return False
 
-def update_wifi_status(serial, connected_ssid, timestamp):
+def get_preferred_networks(serial):
+    """Get the preferred networks from the API."""
+    device_info = update_device(serial, {})
+    wifi_settings = device_info.get("wifiSettings", [])
+    preferred_networks = wifi_settings.get("preferredNetworks", [])
+    return preferred_networks
+
+
+def update_wifi_status(serial, connected_ssid, timestamp, preferred_networks):
+    """Update WiFi status on the server."""
     data = {
         "serial": serial,
-        "lastConnectedNetwork": connected_ssid,
-        "lastUpdatedAt": timestamp
+        "wifiSettings": {
+            "lastConnectedNetwork": connected_ssid,
+            "lastUpdatedAt": timestamp,
+            "preferredNetworks": preferred_networks
+        }
     }
-    response = requests.put(DEVICE_UPDATE_API_ENDPOINT, data=data)
-    if response.status_code == 200:
-        logger.info(f"Successfully updated API with last connected network: {connected_ssid}")
-    else:
-        logger.error(f"Failed to update API. Status Code: {response.status_code}, Response: {response.text}")
+    update_device(serial, data)
+
+def monitor_network_settings(device_info):
+    """Monitor network settings and update if necessary."""
+    global last_wifi_settings
+
+    # Get the latest network status from the API
+    preferred_networks = device_info.get("wifiSettings", {}).get("preferredNetworks", [])
+
+    # Only modify if wifiSettings has changed
+    if preferred_networks != last_wifi_settings:
+        if last_wifi_settings is None:
+            logger.info(f"Initializing Wi-Fi settings: {preferred_networks}")
+        else:
+            logger.info(f"Wi-Fi settings changed. New settings: {preferred_networks}")
+        connect_to_preferred_network(preferred_networks, device_info.get("serial"))
+        last_wifi_settings = preferred_networks
