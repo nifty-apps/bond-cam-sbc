@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from api import get_global_settings, update_device
 from audio_utils import get_audio_devices
-from datetime import datetime
+from datetime import datetime, timezone
 from dotenv import load_dotenv
 from gi.repository import GLib
 from network_utils import monitor_network_settings
@@ -50,7 +50,7 @@ def update_device_info(serial):
                 'path': audio_device['path']
             }
         )
-    current_time = datetime.now().isoformat()
+    current_time = datetime.now(timezone.utc).isoformat()
     # Send device info to the integration endpoint
     data = {
         "connectedDevices": connected_devices,
