@@ -4,9 +4,10 @@ Description=Bondcam streaming service
 [Service]
 User=root
 Group=root
-ExecStart=/bin/bash -c 'python3 /home/nifty/Projects/bondcam_streaming/bondcam_streaming.py'
-StandardOutput=append:/home/nifty/Projects/bondcam_streaming/bondcam_streaming.log
-StandardError=append:/home/nifty/Projects/bondcam_streaming/bondcam_streaming.log
+WorkingDirectory=/home/nifty/Projects/bondcam_streaming
+ExecStart=/bin/bash -c 'python3 bondcam_streaming.py'
+StandardOutput=append:/home/nifty/Projects/bondcam_streaming/logs/bondcam_streaming.log
+StandardError=append:/home/nifty/Projects/bondcam_streaming/logs/bondcam_streaming.log
 ExecReload=/bin/kill -HUP $MAINPID
 KillMode=process
 IgnoreSIGPIPE=true
@@ -14,6 +15,9 @@ Restart=always
 RestartSec=3
 TimeoutSec=60
 Type=simple
+LogRotate=yes
+LogRotateFiles=7
+LogRotateSize=10M
 
 [Install]
 WantedBy=multi-user.target

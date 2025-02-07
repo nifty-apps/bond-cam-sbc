@@ -1,3 +1,7 @@
 __pycache__
-bondcam_streaming.log
-bondcam_startup.log
+
+# Ignore everything in logs directory
+logs/*
+
+# But keep the directory and .gitkeep file
+!logs/.gitkeep
