@@ -17,9 +17,12 @@ GLOBAL_SETTINGS_API = f"{BACKEND_API}/settings"
 DEVICE_BY_SERIAL_API = f"{BACKEND_API}/devices/serial"
 
 # Global Wrapper to handle retries, timeouts, and error handling
-def api_request(method, url, retries=3, delay=5, data=None):
-    """General API request handler with retries."""
-    for attempt in range(retries):
+def api_request(method, url, delay=5, data=None):
+    """General API request handler with infinite retries until connection is restored."""
+    had_error = False
+    attempt = 1
+    
+    while True:
         try:
             if method.upper() == "GET":
                 response = requests.get(url, timeout=10)
@@ -30,20 +33,23 @@ def api_request(method, url, retries=3, delay=5, data=None):
 
             # Check for successful response
             response.raise_for_status()
+            
+            # Print restoration message if previous attempt failed
+            if had_error:
+                logger.info("Connection restored successfully")
+                
             return response.json()
         except requests.exceptions.RequestException as e:
-            logger.error(f"Request error (attempt {attempt + 1}/{retries}): {e}")
+            had_error = True
+            logger.error(f"Request error (attempt {attempt}): {e}")
         except ValueError as e:
             logger.error(f"Error parsing response JSON: {e}")
         except Exception as e:
             logger.error(f"Unexpected error: {e}")
 
-        if attempt < retries - 1:
-            logger.info(f"Retrying in {delay} seconds...")
-            time.sleep(delay)
-        else:
-            logger.warning("Max retries reached. Returning None.")
-            return None
+        logger.info(f"Retrying in {delay} seconds...")
+        time.sleep(delay)
+        attempt += 1
 
 # Function to get global settings
 def get_global_settings():
