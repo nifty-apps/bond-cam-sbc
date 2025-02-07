@@ -70,7 +70,7 @@ def get_stream_settings():
         camera_indices = {}
         
         # Replace camera names with their device paths in stream settings
-        for stream in stream_settings['videoStreams']:
+        for stream in stream_settings.get('videoStreams', []):
             camera_name = stream['camera']
             # Initialize index counter for this camera name if not exists
             if camera_name not in camera_indices:
@@ -90,7 +90,7 @@ def get_stream_settings():
                 stream['camera'] = None
                 
         # Replace audio device name with its device path
-        audio_device = stream_settings['audioDevice']
+        audio_device = stream_settings.get('audioDevice')
         matched_audio = None
         for audio in connected_audio:
             if audio['name'] == audio_device:

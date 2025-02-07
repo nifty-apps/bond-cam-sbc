@@ -96,6 +96,7 @@ class StreamManager:
         num_streams = len(self.desired_video_streams)
         if num_streams == 0:
             logger.info("No video streams defined in stream settings.")
+            self.current_video_streams = []
             return
 
         for idx, stream in enumerate(self.desired_video_streams):
@@ -133,6 +134,7 @@ class StreamManager:
                 gcommand += f"audiotee. ! queue ! mux{camera_num}.audio "
         else:
             logger.info("No video streams defined in stream settings.")
+            self.current_video_streams = []
             return
 
         logger.info(f'GStreamer pipeline:\n{gcommand}\n')
@@ -241,7 +243,8 @@ class StreamManager:
 
         if changes_require_rebuild:
             logger.info("Rebuilding pipeline with new configuration.")
-            self.pipeline.set_state(Gst.State.NULL)
+            if self.pipeline:
+                self.pipeline.set_state(Gst.State.NULL)
             self.build_pipeline()
         else:
             # Update RTMP URLs dynamically
