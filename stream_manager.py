@@ -19,6 +19,7 @@ class StreamManager:
         # Store current configuration
         self.current_video_streams = []
         self.audio_device = None
+        self.current_audio_device = None  # Added to track the current audio device
 
         # Stores compositors for each camera to switch pads
         self.compositors = []
@@ -177,10 +178,13 @@ class StreamManager:
 
         # Copy current configuration
         self.current_video_streams = copy.deepcopy(self.desired_video_streams)
+        self.current_audio_device = self.audio_device  # Update current audio device
 
     def check_stream_info(self):
         # Store previous enabled state
         was_enabled = self.is_enabled
+        # Store previous audio device
+        prev_audio_device = self.current_audio_device
         
         # Fetch new configuration
         self.fetch_stream_settings()
@@ -203,6 +207,11 @@ class StreamManager:
             return True
 
         changes_require_rebuild = False
+
+        # Check if the audio device has changed
+        if prev_audio_device != self.audio_device:
+            logger.info(f"Audio device changed from {prev_audio_device} to {self.audio_device}. Rebuilding pipeline.")
+            changes_require_rebuild = True
 
         # Check if the number of streams has changed
         if len(self.desired_video_streams) != len(self.current_video_streams):
