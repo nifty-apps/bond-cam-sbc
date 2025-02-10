@@ -121,6 +121,13 @@ def monitor_network_settings(device_info):
 
     # Get the latest network status from the API
     preferred_networks = device_info.get("wifiSettings", {}).get("preferredNetworks", [])
+    last_connected = device_info.get("wifiSettings", {}).get("lastConnectedNetwork")
+
+    # Check current network and update if different from lastConnectedNetwork
+    current_network = get_connected_network()
+    if current_network and current_network != last_connected:
+        current_timestamp = datetime.now(timezone.utc).isoformat()
+        update_wifi_status(device_info.get("serial"), current_network, current_timestamp, preferred_networks)
 
     # Only modify if wifiSettings has changed
     if preferred_networks != last_wifi_settings:
