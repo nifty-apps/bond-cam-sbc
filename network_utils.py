@@ -29,14 +29,15 @@ def get_available_networks():
             return []
 
         # Parse the output to extract the ESSIDs of all available networks
-        networks = []
+        networks = set()  # Use a set to automatically deduplicate
         for line in output.splitlines():
             if "ESSID:" in line:
                 essid = line.split('ESSID:')[1].strip().strip('"')
-                if essid:
-                    networks.append(essid)
+                if essid:  # Only add non-empty SSIDs
+                    networks.add(essid)
 
-        return networks
+        # Convert back to sorted list for consistent output
+        return sorted(list(networks))
 
     except Exception as e:
         logger.error(f"Error scanning for available networks: {e}")
@@ -80,6 +81,10 @@ def connect_to_preferred_network(preferred_networks, serial):
 def connect_to_wifi(ssid, password):
     """Connect to a WiFi network using CLI tools (nmcli)."""
     try:
+        # Force a rescan of Wi-Fi networks via NetworkManager
+        subprocess.run(['nmcli', 'dev', 'wifi', 'rescan'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        time.sleep(2)  # Allow time for the rescan
+        
         # Connect to the Wi-Fi network using nmcli
         command = ['nmcli', 'dev', 'wifi', 'connect', ssid, 'password', password]
         result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
