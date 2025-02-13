@@ -100,14 +100,6 @@ def connect_to_wifi(ssid, password):
         logger.error(f"Error connecting to Wi-Fi network '{ssid}': {e}")
         return False
 
-def get_preferred_networks(serial):
-    """Get the preferred networks from the API."""
-    device_info = update_device(serial, {})
-    wifi_settings = device_info.get("wifiSettings", [])
-    preferred_networks = wifi_settings.get("preferredNetworks", [])
-    return preferred_networks
-
-
 def update_wifi_status(serial, connected_ssid, timestamp, preferred_networks):
     """Update WiFi status on the server."""
     data = {
