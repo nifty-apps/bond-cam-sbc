@@ -112,7 +112,7 @@ def check_for_reboot():
             # Reset requiresReboot to False
             update_device(device_info['serial'], {'requiresReboot': False})
             # Reboot the device
-            subprocess.run(["sudo", "reboot"])
+            subprocess.run(["systemctl", "reboot"])
 
 def main(args):
     try:
