@@ -5,3 +5,6 @@ logs/*
 
 # But keep the directory and .gitkeep file
 !logs/.gitkeep
+
+# Ignore everything in venv directory
+.venv/*

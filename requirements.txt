@@ -1,1 +1,5 @@
 pyudev
+requests
+python-dotenv
+PyGObject
+nmcli

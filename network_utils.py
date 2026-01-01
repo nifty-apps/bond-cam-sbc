@@ -1,44 +1,60 @@
 from datetime import datetime, timezone
 from api import update_device
-import subprocess
+import nmcli
+import os
 import time
 from logger import get_logger
 
 logger = get_logger()
+
+# Disable sudo usage for nmcli - service should have NetworkManager permissions via polkit
+# If running as root, sudo is not needed anyway
+if os.geteuid() == 0:
+    nmcli.disable_use_sudo()
+else:
+    # For non-root users, disable sudo if they have NetworkManager permissions
+    # This requires proper polkit configuration
+    try:
+        nmcli.disable_use_sudo()
+    except Exception as e:
+        logger.warning(f"Could not disable sudo for nmcli: {e}. Sudo may be required.")
 
 last_wifi_settings = None
 
 def get_connected_network():
     """Get current Wi-Fi status by querying the system for the active SSID."""
     try:
-        # Use iwgetid or nmcli to get the active SSID
-        result = subprocess.run(['iwgetid', '-r'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        active_ssid = result.stdout.decode('utf-8').strip()
-        return active_ssid if active_ssid else None
+        # Get all WiFi networks and find the one that's in use
+        wifi_networks = nmcli.device.wifi()
+        for network in wifi_networks:
+            if network.in_use:
+                return network.ssid
+        
+        # Fallback: check devices for connected WiFi
+        devices = nmcli.device()
+        for device in devices:
+            if device.device_type == 'wifi' and device.state == 'connected':
+                # The connection name is typically the SSID for WiFi
+                return device.connection if device.connection else None
+        return None
     except Exception as e:
         logger.error(f"Error getting current Wi-Fi status: {e}")
         return None
 
 def get_available_networks():
-    """Scan and return a list of available SSIDs in the area using iwlist."""
+    """Scan and return a list of available SSIDs in the area using nmcli."""
     try:
-        result = subprocess.run(['iwlist', 'wlan0', 'scan'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        output = result.stdout.decode('utf-8')
-        if result.returncode != 0:
-            logger.error(f"Error scanning for available networks: {result.stderr.decode('utf-8')}")
-            return []
-
-        # Parse the output to extract the ESSIDs of all available networks
-        networks = set()  # Use a set to automatically deduplicate
-        for line in output.splitlines():
-            if "ESSID:" in line:
-                essid = line.split('ESSID:')[1].strip().strip('"')
-                if essid:  # Only add non-empty SSIDs
-                    networks.add(essid)
-
+        # Get available WiFi networks
+        wifi_networks = nmcli.device.wifi()
+        
+        # Extract SSIDs and deduplicate using a set
+        networks = set()
+        for network in wifi_networks:
+            if network.ssid:  # Only add non-empty SSIDs
+                networks.add(network.ssid)
+        
         # Convert back to sorted list for consistent output
         return sorted(list(networks))
-
     except Exception as e:
         logger.error(f"Error scanning for available networks: {e}")
         return []
@@ -79,23 +95,13 @@ def connect_to_preferred_network(preferred_networks, serial):
             logger.warning(f"Failed to connect to network '{ssid}'. Trying next...")
 
 def connect_to_wifi(ssid, password):
-    """Connect to a WiFi network using CLI tools (nmcli)."""
+    """Connect to a WiFi network using nmcli library."""
     try:
-        # Force a rescan of Wi-Fi networks via NetworkManager
-        subprocess.run(['nmcli', 'dev', 'wifi', 'rescan'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        time.sleep(2)  # Allow time for the rescan
-        
-        # Connect to the Wi-Fi network using nmcli
-        command = ['nmcli', 'dev', 'wifi', 'connect', ssid, 'password', password]
-        result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-
-        if result.returncode == 0:
-            logger.info(f"Successfully connected to network '{ssid}'")
-            return True
-        else:
-            logger.error(f"Failed to connect to network '{ssid}': {result.stderr.decode('utf-8')}")
-            return False
-
+        # Connect to the Wi-Fi network using nmcli library
+        # NetworkManager will automatically scan if needed
+        nmcli.device.wifi_connect(ssid, password)
+        logger.info(f"Successfully connected to network '{ssid}'")
+        return True
     except Exception as e:
         logger.error(f"Error connecting to Wi-Fi network '{ssid}': {e}")
         return False
