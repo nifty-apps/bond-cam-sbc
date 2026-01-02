@@ -178,13 +178,23 @@ Clone the Bondcam source repository:
 
 ```bash
 mkdir -p /home/nifty/projects
-git clone https://github.com/nifty-apps/bond-cam-sbc.git /home/nifty/projects/bondcam-sbc
+git clone https://github.com/nifty-apps/bondcam-sbc.git /home/nifty/projects/bondcam-sbc
 chown -R nifty:nifty /home/nifty/projects
+```
+
+### 8.2 Environment Configuration
+
+Create the environment file:
+
+```bash
+cd /home/nifty/projects/bondcam-sbc
+cp .env.example .env
+# Edit .env and set BACKEND_API
 ```
 
 ---
 
-### 8.2 Python Dependencies
+### 8.3 Python Dependencies
 
 Dependencies **must** be installed during image build:
 
@@ -201,6 +211,14 @@ Why here:
 ---
 
 ## 9. Bondcam systemd Service (ENABLED IN IMAGE)
+
+Copy the service file from the repository:
+
+```bash
+cp /home/nifty/projects/bondcam-sbc/systemd/bondcam.service /etc/systemd/system/bondcam.service
+```
+
+Or create it manually:
 
 ```bash
 nano /etc/systemd/system/bondcam.service
@@ -220,7 +238,7 @@ User=nifty
 Group=nifty
 WorkingDirectory=/home/nifty/projects/bondcam-sbc
 ExecStartPre=/usr/bin/test -d /home/nifty/projects/bondcam-sbc
-ExecStart=/usr/bin/python3 bondcam_streaming.py
+ExecStart=/usr/bin/python3 -m bondcam.main
 Restart=always
 RestartSec=3
 StandardOutput=journal
@@ -445,11 +463,22 @@ Later reboots | Bondcam runs, no scripts |
 ## 16. Verification Checklist (AFTER INSTALLING THE IMAGE)
 
 ```bash
+# Verify user
 id nifty
+
+# Check hostname
 hostname
+
+# Verify Bondcam service
 systemctl status bondcam
-journalctl -u bondcam.service
+journalctl -u bondcam -n 50
+
+# Check Tailscale
 tailscale status
+
+# Verify devices
+ls -la /dev/video*
+arecord -l
 ```
 
 ---

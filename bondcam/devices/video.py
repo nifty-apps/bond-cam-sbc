@@ -1,6 +1,9 @@
+"""Video device utilities for listing and managing cameras."""
+
 import pyudev
 
 def list_cameras():
+    """List all available video cameras."""
     context = pyudev.Context()
     cameras = []
     seen_devices = {}
@@ -30,3 +33,4 @@ def list_cameras():
                     })
 
     return cameras
+

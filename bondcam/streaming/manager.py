@@ -4,7 +4,7 @@ gi.require_version('Gst', '1.0')
 import sys
 import copy
 from gi.repository import Gst, GLib
-from logger import get_logger
+from bondcam.utils.logger import get_logger
 
 logger = get_logger()
 
@@ -432,7 +432,7 @@ class StreamManager:
         # Proceed with adding elements to pipeline
         # Set initial white balance using extra-controls as Gst.Structure
         channel = stream['channel']
-        white_balance = channel.get('white_balance', 5000)
+        white_balance = channel.get('whiteBalance', 5000)  # Fixed: use whiteBalance instead of white_balance
         structure = Gst.Structure.new_empty("extra_controls")
         structure.set_value("white_balance_temperature_auto", 0)
         structure.set_value("white_balance_temperature", white_balance)
@@ -637,3 +637,4 @@ class StreamManager:
         if self.pipeline:
             self.pipeline.set_state(Gst.State.NULL)
             self.pipeline = None
+

@@ -1,20 +1,14 @@
-import os
+"""API client for backend communication."""
+
 import requests
 import time
-import logging
-from dotenv import load_dotenv
+from bondcam.config.settings import (
+    get_global_settings_api,
+    get_device_by_serial_api
+)
+from bondcam.utils.logger import get_logger
 
-load_dotenv()
-
-# Setup logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger()
-
-# Get the BACKEND_API from the .env file
-BACKEND_API = os.environ["BACKEND_API"]
-
-GLOBAL_SETTINGS_API = f"{BACKEND_API}/settings"
-DEVICE_BY_SERIAL_API = f"{BACKEND_API}/devices/serial"
+logger = get_logger()
 
 # Global Wrapper to handle retries, timeouts, and error handling
 def api_request(method, url, delay=5, data=None):
@@ -54,12 +48,12 @@ def api_request(method, url, delay=5, data=None):
 # Function to get global settings
 def get_global_settings():
     """Fetch global settings using the api_request wrapper."""
-    return api_request("GET", GLOBAL_SETTINGS_API)
+    return api_request("GET", get_global_settings_api())
 
 # Function to update device details
 def update_device(serial, data):
     """Update device details using the api_request wrapper."""
-    url = DEVICE_BY_SERIAL_API + f"/{serial}"
+    url = get_device_by_serial_api() + f"/{serial}"
     response = api_request("PUT", url, data=data)
     
     if response:

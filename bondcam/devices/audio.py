@@ -1,6 +1,9 @@
+"""Audio device utilities for listing and managing audio devices."""
+
 import subprocess
 
 def get_audio_devices():
+    """List all available audio devices."""
     cmd_devices = """arecord -l | grep card"""
     devicesstr = subprocess.run(["bash", "-c", cmd_devices], stdout=subprocess.PIPE)
     device_list = devicesstr.stdout.decode('utf-8')
@@ -15,3 +18,4 @@ def get_audio_devices():
             })
 
     return devices
+
